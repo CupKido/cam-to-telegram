@@ -47,7 +47,7 @@ const init = (onImageUploaded) => {
     "login",
     ({ connection, username, password }, resolve, reject) => {
       // Set simple credentials matching what you'll put in the camera
-      if (username === "sony" && password === "alpha") {
+      if (username === process.env.FTP_USERNAME && password === process.env.FTP_PASSWORD) {
         console.log(
           `[FTP] Camera connected successfully from ${connection.remoteAddress}`,
         );

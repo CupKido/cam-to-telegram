@@ -30,6 +30,8 @@ npm install
 ```env
 TELEGRAM_TOKEN=your_telegram_bot_token
 OWNER_TELEGRAM_ID=your_telegram_user_id
+FTP_USERNAME=your_ftp_username
+FTP_PASSWORD=your_ftp_password
 ```
 
 5. Ensure `signed_in_users.txt` exists in the project root:
