@@ -4,12 +4,14 @@ WORKDIR /app
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends imagemagick \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && chown node:node /app
 
-COPY package*.json ./
+USER node
+
+COPY --chown=node:node package*.json ./
 RUN npm ci --omit=dev
 
-COPY . .
-RUN touch signed_in_users.txt
+COPY --chown=node:node . .
 
 CMD ["node", "index.js"]

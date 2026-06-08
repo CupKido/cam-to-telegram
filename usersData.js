@@ -21,6 +21,9 @@ const saveUserData = (username, id) => {
 
 const extractUsersData = () => {
   const users = new Map();
+  if (!fs.existsSync(USERS_DATA_FILE)) {
+    fs.writeFileSync(USERS_DATA_FILE, "");
+  }
   const userData = fs.readFileSync(USERS_DATA_FILE, "utf-8");
   const lines = userData.split("\n");
 
