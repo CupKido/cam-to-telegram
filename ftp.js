@@ -2,7 +2,7 @@ const FtpServer = require("ftp-srv");
 const path = require("path");
 const fs = require("fs");
 const sharp = require("sharp");
-const gm = require("gm").subClass({ imageMagick: "7+" });
+const gm = require("gm").subClass({ imageMagick: true });
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
 if (!fs.existsSync(UPLOAD_DIR)) {

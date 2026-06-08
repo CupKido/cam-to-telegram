@@ -6,7 +6,7 @@ const randomReplySentence = require("./replySentences");
 const { saveUserData, getUsers, getUserId } = require("./usersData");
 const path = require("path");
 const fs = require("fs");
-const gm = require("gm").subClass({ imageMagick: "7+" });
+const gm = require("gm").subClass({ imageMagick: true });
 const { logImage, getLogFilesList, getLogFilePath } = require("./imageLogger");
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
