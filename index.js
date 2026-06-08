@@ -124,11 +124,22 @@ FTPServer(async (filePath, filename) => {
 
     console.log("sending to telegram", processedImagePath);
 
-    sendImageToUser(
-      getUserId(selectedUser),
-      processedImagePath,
-      randonReplySentence(),
-    );
+    if (selectedUsers.size > 0) {
+      const promises = Array.from(selectedUsers).map((user) =>
+        sendImageToUser(
+          getUserId(user),
+          processedImagePath,
+          randonReplySentence(),
+        ),
+      );
+      await Promise.all(promises);
+    } else {
+      await sendImageToUser(
+        getUserId(selectedUser),
+        processedImagePath,
+        randonReplySentence(),
+      );
+    }
 
     deleteImageAfterDelay(filePath, 10000);
     deleteImageAfterDelay(processedImagePath, 30000);
