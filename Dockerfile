@@ -9,6 +9,9 @@ RUN apt-get update \
 
 USER node
 
+EXPOSE 2121
+EXPOSE 10022-10024
+
 COPY --chown=node:node package*.json ./
 RUN npm ci --omit=dev
 

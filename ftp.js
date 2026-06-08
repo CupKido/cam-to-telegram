@@ -16,19 +16,7 @@ if (!fs.existsSync(PROCESSED_DIR)) {
 const imagesWritten = new Map();
 
 let initialized = false;
-// 1. Get your computer's local IP address (e.g., 192.168.X.X from your hotspot)
-const { networkInterfaces } = require("os");
-const nets = networkInterfaces();
 let localIp = "0.0.0.0";
-
-// for (const name of Object.keys(nets)) {
-//   for (const net of nets[name]) {
-//     // Skip over non-IPv4 and internal (i.e. loopback) addresses
-//     if (net.family === "IPv4" && !net.internal) {
-//       localIp = net.address;
-//     }
-//   }
-// }
 
 const init = (onImageUploaded) => {
   if (initialized) {
@@ -37,8 +25,15 @@ const init = (onImageUploaded) => {
   }
 
   const ftpServer = new FtpServer({
-    url: `ftp://${localIp}:${process.env.FTP_PORT || "2121"}`,
-    pasv_url: localIp, // Crucial for Sony cameras to establish data channels
+    url: `ftp://0.0.0.0:${process.env.FTP_PORT || "2121"}`,
+
+    // 1. MUST be your computer's actual local network IP on your router!
+    pasv_url: process.env.HOST_IP_ADDRESS || localIp,
+
+    // 2. Explicitly bound range for the dynamic data channels
+    pasv_min: 10022,
+    pasv_max: 10024,
+
     anonymous: false,
   });
 
