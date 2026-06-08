@@ -34,11 +34,7 @@ FTP_USERNAME=your_ftp_username
 FTP_PASSWORD=your_ftp_password
 ```
 
-5. Ensure `signed_in_users.txt` exists in the project root:
-
-```bash
-touch signed_in_users.txt
-```
+5. The app will create `signed_in_users.txt` automatically on first run.
 
 ## Install ImageMagick
 
@@ -71,6 +67,29 @@ magick -version
 ```bash
 node index.js
 ```
+
+## Deploy with Docker
+
+Build image:
+
+```bash
+docker build -t cam-to-telegram .
+```
+
+Run container:
+
+```bash
+docker run --rm \
+  -e TELEGRAM_TOKEN=your_telegram_bot_token \
+  -e OWNER_TELEGRAM_ID=your_telegram_user_id \
+  -e FTP_USERNAME=your_ftp_username \
+  -e FTP_PASSWORD=your_ftp_password \
+  -p 2121:2121 \
+  cam-to-telegram
+```
+
+If you want to persist `signed_in_users.txt` between container restarts, create the host file first (`touch signed_in_users.txt`) and mount it: `-v $(pwd)/signed_in_users.txt:/app/signed_in_users.txt`.
+For production deployments, provide secrets through your platform's secret manager (or protected env files), and never bake credentials into the image.
 
 ## Configuration
 
