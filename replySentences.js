@@ -28,6 +28,14 @@ const replySentences = [
   "Wawaweewa, this face is very nice, I like!!! 💥👍😍❤️‍🔥",
   "King of the castle, king of the castle, WOW!!! 🏰👑👀✨",
   "Kapara! what is this magic?? you look like a million shekels noder neder!!! 💰💎🤩💞",
+  "Okayyyyy but HOW are you this gorgeous?!?! 😩💖💖",
+  "That smile?!?!?!? HELLOOOOO 😭💕✨",
+  "I swear this picture just attacked me with beauty 😩💘💘",
+  "You really woke up and decided to look AMAZING huh?!?! 😩✨❤️",
+  "I’m sorry but this is actually model behavior 😭💘✨",
+  "I literally said WOW out loud 😩💘✨",
+  "Absolutely SERVINGGGGG 😍🔥❤️‍🔥",
+  "Can we talk about how AMAZING you look?!?! 😭💕💕",
 ];
 
 module.exports = () => {
