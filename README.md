@@ -72,6 +72,26 @@ magick -version
 node index.js
 ```
 
+## Deploy with Docker
+
+Build image:
+
+```bash
+docker build -t cam-to-telegram .
+```
+
+Run container:
+
+```bash
+docker run --rm \
+  -e TELEGRAM_TOKEN=your_telegram_bot_token \
+  -e OWNER_TELEGRAM_ID=your_telegram_user_id \
+  -e FTP_USERNAME=your_ftp_username \
+  -e FTP_PASSWORD=your_ftp_password \
+  -p 2121:2121 \
+  cam-to-telegram
+```
+
 ## Configuration
 
 ### Environment variables
