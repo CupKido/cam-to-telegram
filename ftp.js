@@ -124,7 +124,7 @@ const init = (onImageUploaded) => {
       console.log(`[FTP Watcher] Detected new file: ${filename}`);
       imagesWritten.set(
         filename,
-        setTimeout(() => handleImageReceived(filename), 3000),
+        setTimeout(() => handleImageReceived(filename), 6000),
       );
     }
 
@@ -132,7 +132,7 @@ const init = (onImageUploaded) => {
       clearTimeout(imagesWritten.get(filename));
       imagesWritten.set(
         filename,
-        setTimeout(async () => await handleImageReceived(filename), 3000),
+        setTimeout(async () => await handleImageReceived(filename), 4000),
       );
     }
   });
@@ -141,6 +141,7 @@ const init = (onImageUploaded) => {
     const filePath = path.join(UPLOAD_DIR, filename);
 
     if (fs.existsSync(filePath)) {
+      imagesWritten.delete(filename);
       console.log(
         `📸 [NEW IMAGE RECEIVED]: ${filename} (${(fs.statSync(filePath).size / 1024 / 1024).toFixed(2)} MB)`,
       );
