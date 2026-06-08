@@ -87,11 +87,6 @@ node index.js
 | --- | --- | --- |
 | FTP server | `2121` | Bound to detected local IPv4 address |
 
-FTP login credentials are currently hardcoded in `ftp.js`:
-
-- Username: `sony`
-- Password: `alpha`
-
 ## Telegram commands
 
 - `/start` — register/sign in user (or owner welcome flow)
