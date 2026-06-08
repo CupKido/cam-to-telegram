@@ -2,13 +2,15 @@ const { Telegraf, Markup } = require("telegraf");
 const dotenv = require("dotenv");
 dotenv.config();
 const FTPServer = require("./ftp");
-const randonReplySentence = require("./replySentences");
+const randomReplySentence = require("./replySentences");
 const { saveUserData, getUsers, getUserId } = require("./usersData");
 const path = require("path");
 const fs = require("fs");
 const gm = require("gm").subClass({ imageMagick: "7+" });
+const { logImage, getLogFilesList, getLogFilePath } = require("./imageLogger");
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
+const userToMessageTimeMap = new Map();
 let selectedUser = null;
 let selectedUsers = new Set();
 
@@ -89,6 +91,37 @@ bot.command("selectUsers", async (ctx) => {
   );
 });
 
+bot.command("getLogs", async (ctx) => {
+  if (ctx.from.id.toString() !== process.env.OWNER_TELEGRAM_ID) {
+    ctx.reply("You are not authorized to use this command.");
+    return;
+  }
+
+  const logFiles = getLogFilesList().map((date) =>
+    Markup.button.callback(date, "getLog:" + date),
+  );
+
+  await ctx.reply(
+    "Please choose a log file from the menu below:",
+    Markup.inlineKeyboard(logFiles)
+      .resize() // Fits the keyboard nicely on mobile screens
+      .oneTime(), // Automatically hides the keyboard after a button is pressed (optional)
+  );
+});
+
+bot.action(/getLog:(.+)/, async (ctx) => {
+  const logFilePath = getLogFilePath(ctx.match[1]);
+  if (!logFilePath) {
+    ctx.reply("Log file not found.");
+
+    return;
+  }
+
+  ctx.replyWithDocument({
+    source: logFilePath,
+  });
+});
+
 bot.action(/select:(.+)/, (ctx) => {
   selectedUser = ctx.match[1];
   ctx.reply(`You have selected: ${selectedUser}`);
@@ -126,19 +159,11 @@ FTPServer(async (filePath, filename) => {
 
     if (selectedUsers.size > 0) {
       const promises = Array.from(selectedUsers).map((user) =>
-        sendImageToUser(
-          getUserId(user),
-          processedImagePath,
-          randonReplySentence(),
-        ),
+        sendImageToUser(user, processedImagePath),
       );
       await Promise.all(promises);
     } else {
-      await sendImageToUser(
-        getUserId(selectedUser),
-        processedImagePath,
-        randonReplySentence(),
-      );
+      await sendImageToUser(selectedUser, processedImagePath);
     }
 
     deleteImageAfterDelay(filePath, 10000);
@@ -200,13 +225,23 @@ async function deleteImageAfterDelay(imagePath, delay) {
   }, delay);
 }
 
-async function sendImageToUser(userId, imagePath, caption) {
+async function sendImageToUser(userKey, imagePath) {
+  const userId = getUserId(userKey);
+  logImage(imagePath, userKey, userId);
   try {
     await bot.telegram.sendDocument(userId, {
       source: imagePath,
     });
-    await bot.telegram.sendMessage(userId, caption);
+    if (
+      !userToMessageTimeMap.has(userId) ||
+      Date.now() - userToMessageTimeMap.get(userId) > 60 * 1000
+    ) {
+      userToMessageTimeMap.set(userId, Date.now());
+      await bot.telegram.sendMessage(userId, randomReplySentence());
+    }
   } catch (error) {
     console.error("Failed to send image to user:", error);
   }
 }
+
+console.log(Math.floor(Math.random() * 3));
