@@ -2,8 +2,8 @@ const { Telegraf, Markup } = require("telegraf");
 const dotenv = require("dotenv");
 dotenv.config();
 const FTPServer = require("./ftp");
+const randonReplySentence = require("./replySentences");
 const { saveUserData, getUsers, getUserId } = require("./usersData");
-
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 let selectedUser = null;
 
@@ -12,6 +12,13 @@ bot.command("myID", (ctx) => {
 });
 
 bot.command("start", (ctx) => {
+  if (ctx.from.id.toString() === process.env.OWNER_TELEGRAM_ID) {
+    ctx.reply(
+      "Welcome back, owner! Use /selectUser to choose a recipient for the photos.",
+    );
+    return;
+  }
+
   if (getUsers().has(getUserKey(ctx.from))) {
     ctx.reply("Welcome back! Use /myID to get your Telegram ID.");
     return;
@@ -54,6 +61,7 @@ bot.command("selectUser", async (ctx) => {
 bot.action(/select:(.+)/, (ctx) => {
   selectedUser = ctx.match[1];
   ctx.reply(`You have selected: ${selectedUser}`);
+  console.log(`Selected user for photo delivery: ${selectedUser}`);
 });
 
 bot.launch();
@@ -76,21 +84,18 @@ FTPServer(async (processedImagePath, filename) => {
     source: processedImagePath,
     caption: `Processed image: ${filename}`,
   });
-  await bot.telegram.sendMessage(
-    selectedUserId,
-    `That's a pretty face if I've ever seen one!`,
-  );
+  await bot.telegram.sendMessage(selectedUserId, randonReplySentence());
 
   setTimeout(() => {
     // Clean up the processed image after sending
-    const fs = require("fs");
-    fs.unlink(processedImagePath, (err) => {
-      if (err) {
-        console.error("Failed to delete processed image:", err);
-      } else {
-        console.log(`Deleted processed image: ${processedImagePath}`);
-      }
-    });
+    // const fs = require("fs");
+    // fs.unlink(processedImagePath, (err) => {
+    //   if (err) {
+    //     console.error("Failed to delete processed image:", err);
+    //   } else {
+    //     console.log(`Deleted processed image: ${processedImagePath}`);
+    //   }
+    // });
   }, 5000); // Adjust the delay as needed (e.g., 10 seconds)
 });
 
