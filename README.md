@@ -1,0 +1,117 @@
+# cam-to-telegram
+
+Receive photos from a camera over FTP, auto-process them with ImageMagick, and send them to a selected Telegram user.
+
+## What this project does
+
+- Starts a Telegram bot (via Telegraf)
+- Starts an FTP server on your local network for camera uploads
+- Watches uploaded files, processes images with ImageMagick (`gm`)
+- Sends processed photos to a selected Telegram user
+
+## Requirements
+
+- Node.js 18+ (recommended)
+- npm
+- ImageMagick (required by `gm` and this project’s processing flow)
+
+## Installation
+
+1. Clone the repository.
+2. Install ImageMagick.
+3. Install Node.js dependencies:
+
+```bash
+npm install
+```
+
+4. Create a `.env` file in the project root:
+
+```env
+TELEGRAM_TOKEN=your_telegram_bot_token
+OWNER_TELEGRAM_ID=your_telegram_user_id
+```
+
+5. Ensure `signed_in_users.txt` exists in the project root:
+
+```bash
+touch signed_in_users.txt
+```
+
+## Install ImageMagick
+
+### Ubuntu / Debian
+
+```bash
+sudo apt update
+sudo apt install -y imagemagick
+```
+
+### macOS (Homebrew)
+
+```bash
+brew install imagemagick
+```
+
+### Windows
+
+- Install from the official ImageMagick installer.
+- Make sure ImageMagick is added to PATH.
+
+Verify installation:
+
+```bash
+magick -version
+```
+
+## Run the app
+
+```bash
+node index.js
+```
+
+## Configuration
+
+### Environment variables
+
+| Name | Required | Description |
+| --- | --- | --- |
+| `TELEGRAM_TOKEN` | Yes | Telegram bot token from BotFather |
+| `OWNER_TELEGRAM_ID` | Yes | Telegram user ID allowed to use `/selectUser` |
+
+### Network / ports
+
+| Service | Port | Notes |
+| --- | --- | --- |
+| FTP server | `2121` | Bound to detected local IPv4 address |
+
+FTP login credentials are currently hardcoded in `ftp.js`:
+
+- Username: `sony`
+- Password: `alpha`
+
+## Telegram commands
+
+- `/start` — register/sign in user (or owner welcome flow)
+- `/myID` — returns Telegram user ID
+- `/selectUser` — owner-only command to select who receives photos
+
+## Runtime folders
+
+The app creates these directories automatically:
+
+- `uploaded_photos/` — incoming camera files
+- `processed_photos/` — processed output files
+
+## How photo delivery works
+
+1. Camera uploads image via FTP (`2121`)
+2. File watcher detects completed upload
+3. Image is processed with ImageMagick (`gm`)
+4. Processed image is sent to selected Telegram user
+5. Original and processed files are deleted after a delay
+
+## Notes
+
+- This app is intended to run on a machine reachable by your camera over local network.
+- If the bot fails to start, verify `.env` values and that ImageMagick is installed.
