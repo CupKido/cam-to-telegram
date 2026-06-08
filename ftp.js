@@ -30,44 +30,6 @@ for (const name of Object.keys(nets)) {
   }
 }
 
-async function applyAutoExposure(inputPath, filename, callback) {
-  // if directory doesn't exist, create it
-
-  const outputPath = path.join(
-    __dirname,
-    "processed_photos",
-    `auto_${filename}`,
-  );
-
-  try {
-    // await sharp(inputPath)
-    //   .normalise() // ◄ This is your "Lightroom Auto-Exposure" engine
-    //   .modulate({
-    //     brightness: 1.05, // Optional fine-tuning: Adds a 5% baseline lift
-    //     saturation: 1.1, // Optional: Boosts saturation by 10% for punchier colors
-    //   })
-    //   .jpeg({ quality: 100 }) // Compress for fast dispatching to your bot
-    //   .toFile(outputPath);
-
-    await gm(inputPath)
-      .autoOrient()
-      .modulate(110, 90)
-      .level("10%", "90%", 1.0)
-      .quality(100)
-      .write(outputPath, async function (err) {
-        if (err) console.log("Error applying auto exposure:", err);
-        else {
-          console.error("Tonal values adjusted!");
-          await callback(outputPath);
-        }
-      });
-
-    return outputPath;
-  } catch (err) {
-    console.error("Failed to process auto exposure:", err);
-  }
-}
-
 const init = (onImageUploaded) => {
   if (initialized) {
     console.warn("FTP Server is already initialized.");
@@ -146,14 +108,7 @@ const init = (onImageUploaded) => {
         `📸 [NEW IMAGE RECEIVED]: ${filename} (${(fs.statSync(filePath).size / 1024 / 1024).toFixed(2)} MB)`,
       );
 
-      await applyAutoExposure(filePath, filename, async (processedPath) => {
-        if (processedPath) {
-          console.log(
-            `   ✅ Auto-exposure applied. Processed file: ${processedPath}`,
-          );
-          await onImageUploaded(processedPath, filename);
-        }
-      });
+      await onImageUploaded(filePath, filename);
     }
   };
 
