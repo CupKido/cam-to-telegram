@@ -10,20 +10,21 @@ const gm = require("gm").subClass({ imageMagick: "7+" });
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 let selectedUser = null;
+let selectedUsers = new Set();
 
 bot.command("myID", (ctx) => {
   ctx.reply(`its ${ctx.from.id}`);
 });
 
 bot.command("start", (ctx) => {
-  if (ctx.from.id.toString() === process.env.OWNER_TELEGRAM_ID) {
-    ctx.reply(
-      "Welcome back, owner! Use /selectUser to choose a recipient for the photos.",
-    );
-    return;
-  }
-
   if (getUsers().has(getUserKey(ctx.from))) {
+    if (ctx.from.id.toString() === process.env.OWNER_TELEGRAM_ID) {
+      ctx.reply(
+        "Welcome back, owner! Use /selectUser to choose a recipient for the photos.",
+      );
+      return;
+    }
+
     ctx.reply("Welcome back! Use /myID to get your Telegram ID.");
     return;
   }
@@ -62,10 +63,48 @@ bot.command("selectUser", async (ctx) => {
   );
 });
 
+bot.command("selectUsers", async (ctx) => {
+  if (ctx.from.id.toString() !== process.env.OWNER_TELEGRAM_ID) {
+    ctx.reply("You are not authorized to use this command.");
+    return;
+  }
+
+  selectedUsers = new Set();
+
+  // List all signed-in users
+  const userList = Array.from(getUsers().keys()).map((username) =>
+    Markup.button.callback(username, "addselect:" + username),
+  );
+
+  const clearButton = Markup.button.callback(
+    "Clear Selection",
+    "clearUsersSelection",
+  );
+
+  await ctx.reply(
+    "Please choose a user from the menu below:",
+    Markup.inlineKeyboard([...userList, clearButton])
+      .resize() // Fits the keyboard nicely on mobile screens
+      .persistent(), // Keeps the keyboard open after a button is pressed
+  );
+});
+
 bot.action(/select:(.+)/, (ctx) => {
   selectedUser = ctx.match[1];
   ctx.reply(`You have selected: ${selectedUser}`);
   console.log(`Selected user for photo delivery: ${selectedUser}`);
+});
+
+bot.action(/addselect:(.+)/, (ctx) => {
+  selectedUsers.push(ctx.match[1]);
+  ctx.reply(`You have selected: ${ctx.match[1]}`);
+  console.log(`Selected users for photo delivery: ${selectedUsers.join(", ")}`);
+});
+
+bot.action("clearUsersSelection", (ctx) => {
+  selectedUsers = new Set();
+  ctx.reply("User selection cleared.");
+  console.log("Selected users cleared.");
 });
 
 bot.launch();

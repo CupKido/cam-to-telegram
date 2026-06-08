@@ -8,7 +8,7 @@ const saveUserData = (username, id) => {
     return;
   }
   signedInUsers.set(username, id);
-  const userData = `${username} ${id}\n`;
+  const userData = `${username}|||${id}\n`;
 
   fs.appendFile(USERS_DATA_FILE, userData, (err) => {
     if (err) {
@@ -25,7 +25,7 @@ const extractUsersData = () => {
   const lines = userData.split("\n");
 
   for (const line of lines) {
-    const [user, id] = line.split(" ");
+    const [user, id] = line.split("|||");
     users.set(user, id);
   }
 
