@@ -44,14 +44,10 @@ const init = (onImageUploaded) => {
 
   const ftpServer = new FtpServer({
     url: `ftp://0.0.0.0:${process.env.FTP_PORT || "2121"}`,
-
-    // 1. MUST be your computer's actual local network IP on your router!
-    pasv_url: pasv_url,
-
-    // 2. Explicitly bound range for the dynamic data channels
     pasv_min: 10022,
     pasv_max: 10024,
-
+    pasv_match: false,
+    pasv_url: () => '0.0.0.0',  
     anonymous: false,
   });
 
