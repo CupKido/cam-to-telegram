@@ -1,6 +1,27 @@
 const FtpServer = require("ftp-srv");
 const path = require("path");
 const fs = require("fs");
+const express = require("express");
+const app = express();
+
+let localIp = "0.0.0.0";
+const pasv_url = process.env.HOST_IP_ADDRESS || localIp;
+
+app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.get("/", (req, res) => {
+  res.send(
+    "📸 Sony FTP Server is running! Please point your camera to ftp://" +
+      pasv_url +
+      ":2121 with the configured credentials.",
+  );
+});
+
+app.listen(8080, () => {
+  console.log(`📡 Web server running on http://${pasv_url}:3000`);
+});
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -14,7 +35,6 @@ if (!fs.existsSync(PROCESSED_DIR)) {
 const imagesWritten = new Map();
 
 let initialized = false;
-let localIp = "0.0.0.0";
 
 const init = (onImageUploaded) => {
   if (initialized) {
@@ -26,7 +46,7 @@ const init = (onImageUploaded) => {
     url: `ftp://0.0.0.0:${process.env.FTP_PORT || "2121"}`,
 
     // 1. MUST be your computer's actual local network IP on your router!
-    pasv_url: process.env.HOST_IP_ADDRESS || localIp,
+    pasv_url: pasv_url,
 
     // 2. Explicitly bound range for the dynamic data channels
     pasv_min: 10022,
