@@ -91,6 +91,8 @@ const getMetricsReport = () => {
     metrics.imageReceiveCount.value > 0
       ? metrics.imageReceiveTimeSum.value / metrics.imageReceiveCount.value
       : 0;
+  const averageImageHandlingTime =
+    averageUploadTime + averageProcessTime + averageReceiveTime;
   return (
     `📊 Metrics Report:\n\n` +
     Object.values(metrics)
@@ -101,7 +103,8 @@ const getMetricsReport = () => {
       .join("\n") +
     `\n\n⏱️ Average Upload Time: ${averageUploadTime.toFixed(2)} ms` +
     `\n⏱️ Average Process Time: ${averageProcessTime.toFixed(2)} ms` +
-    `\n⏱️ Average Receive Time: ${averageReceiveTime.toFixed(2)} ms`
+    `\n⏱️ Average Receive Time: ${averageReceiveTime.toFixed(2)} ms` +
+    `\n\n⏱️ Average Image Handling Time: ${averageImageHandlingTime.toFixed(2)} ms`
   );
 };
 
