@@ -109,8 +109,7 @@ const init = (onImageUploaded, onLogin) => {
       imagesWritten.set(
         filename,
         setTimeout(async () => {
-          recordImageReceiveTime(startTime);
-          await handleImageReceived(filename);
+          await handleImageReceived(filename, startTime);
         }, 6000),
       );
     }
@@ -120,21 +119,18 @@ const init = (onImageUploaded, onLogin) => {
       imagesWritten.set(
         filename,
         setTimeout(async () => {
-          recordImageReceiveTime(startTime);
-          await handleImageReceived(filename);
+          await handleImageReceived(filename, startTime);
         }, 4000),
       );
     }
   });
 
-  const handleImageReceived = async (filename) => {
+  const handleImageReceived = async (filename, startTime) => {
     const filePath = path.join(UPLOAD_DIR, filename);
 
     if (fs.existsSync(filePath)) {
+      recordImageReceiveTime(startTime);
       imagesWritten.delete(filename);
-      console.log(
-        `📸 [NEW IMAGE RECEIVED]: ${filename} (${(fs.statSync(filePath).size / 1024 / 1024).toFixed(2)} MB)`,
-      );
 
       await onImageUploaded(filePath, filename);
     }
