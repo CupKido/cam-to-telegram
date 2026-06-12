@@ -6,7 +6,7 @@ const app = express();
 const {
   recordImageReceiveTime,
   onFTPClientConnected,
-  setFTPClientConnectedCount,
+  onFTPClientDisconnected,
 } = require("./metrics");
 //CONFIG
 let localIp = "0.0.0.0";
@@ -36,10 +36,6 @@ app.listen(8080, () => {
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR);
-}
-const PROCESSED_DIR = path.join(__dirname, "processed_photos");
-if (!fs.existsSync(PROCESSED_DIR)) {
-  fs.mkdirSync(PROCESSED_DIR);
 }
 
 const imagesWritten = new Map();
@@ -114,13 +110,12 @@ const init = (onImageUploaded, onLogin) => {
     console.log(`🔢 Port:      ${FTP_PORT}`);
     console.log(`👤 Username:  ${process.env.FTP_USERNAME}`);
     console.log(`📂 Destination: ${UPLOAD_DIR}`);
-    console.log(`📂 Edited destination: ${PROCESSED_DIR}`);
     console.log(`===================================================`);
   });
 
   ftpServer.on("disconnect", ({ connection, id, newConnectionCount }) => {
     console.log(`[FTP] disconnected: ${id}`);
-    setFTPClientConnectedCount(newConnectionCount);
+    onFTPClientDisconnected();
   });
 
   fs.watch(UPLOAD_DIR, (eventType, filename) => {

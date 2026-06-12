@@ -81,8 +81,8 @@ const onFTPClientConnected = () => {
   metrics.connectedFTPClientsCount.value++;
 };
 
-const setFTPClientConnectedCount = (connectedCount) => {
-  metrics.connectedFTPClientsCount.value = connectedCount;
+const onFTPClientDisconnected = () => {
+  metrics.connectedFTPClientsCount.value--;
 };
 
 const resetMetrics = () => {
@@ -130,5 +130,5 @@ module.exports = {
   resetMetrics,
   getMetricsReport,
   onFTPClientConnected,
-  setFTPClientConnectedCount,
+  onFTPClientDisconnected,
 };
