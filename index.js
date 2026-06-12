@@ -102,7 +102,9 @@ const workOnImageProcessTask = async (processTask) => {
     return;
   }
 
-  deleteFileAfterDelay(imagePath, 10000);
+  if (processedImagePath !== imagePath) {
+    deleteFileAfterDelay(imagePath, 10000);
+  }
 
   imagesUploadQueue.push({
     userKey,
