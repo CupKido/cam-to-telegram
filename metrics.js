@@ -1,69 +1,107 @@
-let imageUploadTimeSum = 0;
-let imageUploadCount = 0;
-let imageProcessTimeSum = 0;
-let imageProcessCount = 0;
-let imageReceiveTimeSum = 0;
-let imageReceiveCount = 0;
-let noUserSelectedCount = 0;
-let imagesFailedProcessCount = 0;
+const metrics = {
+  imageUploadTimeSum: {
+    value: 0,
+    name: "Image Upload Time Sum",
+    valueType: "ms",
+  },
+  imageUploadCount: {
+    value: 0,
+    name: "Image Upload Count",
+    valueType: "count",
+  },
+  imageProcessTimeSum: {
+    value: 0,
+    name: "Image Process Time Sum",
+    valueType: "ms",
+  },
+  imageProcessCount: {
+    value: 0,
+    name: "Image Process Count",
+    valueType: "count",
+  },
+  imageReceiveTimeSum: {
+    value: 0,
+    name: "Image Receive Time Sum",
+    valueType: "ms",
+  },
+  imageReceiveCount: {
+    value: 0,
+    name: "Image Receive Count",
+    valueType: "count",
+  },
+  noUserSelectedCount: {
+    value: 0,
+    name: "No User Selected Count",
+    valueType: "count",
+  },
+  imagesFailedProcessCount: {
+    value: 0,
+    name: "Images Failed Process Count",
+    valueType: "count",
+  },
+  maxProcessTime: { value: 0, name: "Max Image Process Time", valueType: "ms" },
+};
 
 const recordImageReceiveTime = (startTime) => {
   const endTime = Date.now();
   const time = endTime - startTime;
-  imageReceiveTimeSum += time;
-  imageReceiveCount++;
+  metrics.imageReceiveTimeSum.value += time;
+  metrics.imageReceiveCount.value++;
 };
 
 const recordImageUploadTime = (startTime) => {
   const endTime = Date.now();
   const time = endTime - startTime;
-  imageUploadTimeSum += time;
-  imageUploadCount++;
+  metrics.imageUploadTimeSum.value += time;
+  metrics.imageUploadCount.value++;
 };
 
 const recordImageProcessTime = (startTime) => {
   const endTime = Date.now();
   const time = endTime - startTime;
-  imageProcessTimeSum += time;
-  imageProcessCount++;
+  metrics.imageProcessTimeSum.value += time;
+  metrics.imageProcessCount.value++;
+  metrics.maxProcessTime.value = Math.max(metrics.maxProcessTime.value, time);
 };
 
 const onNoUserSelected = () => {
-  noUserSelectedCount++;
+  metrics.noUserSelectedCount.value++;
 };
 
 const onImageProcessFailed = () => {
-  imagesFailedProcessCount++;
+  metrics.imagesFailedProcessCount.value++;
 };
 
 const resetMetrics = () => {
-  imageUploadTimeSum = 0;
-  imageUploadCount = 0;
-  imageProcessTimeSum = 0;
-  imageProcessCount = 0;
-  imageReceiveTimeSum = 0;
-  imageReceiveCount = 0;
-  noUserSelectedCount = 0;
-  imagesFailedProcessCount = 0;
+  Object.keys(metrics).forEach((key) => {
+    metrics[key].value = 0;
+  });
 };
 
 const getMetricsReport = () => {
   const averageUploadTime =
-    imageUploadCount > 0 ? imageUploadTimeSum / imageUploadCount : 0;
+    metrics.imageUploadCount.value > 0
+      ? metrics.imageUploadTimeSum.value / metrics.imageUploadCount.value
+      : 0;
   const averageProcessTime =
-    imageProcessCount > 0 ? imageProcessTimeSum / imageProcessCount : 0;
+    metrics.imageProcessCount.value > 0
+      ? metrics.imageProcessTimeSum.value / metrics.imageProcessCount.value
+      : 0;
   const averageReceiveTime =
-    imageReceiveCount > 0 ? imageReceiveTimeSum / imageReceiveCount : 0;
+    metrics.imageReceiveCount.value > 0
+      ? metrics.imageReceiveTimeSum.value / metrics.imageReceiveCount.value
+      : 0;
   return (
     `📊 Metrics Report:\n\n` +
-    `Total Images Uploaded: ${imageUploadCount}\n` +
-    `Average Upload Time: ${averageUploadTime.toFixed(2)} ms\n` +
-    `Total Images Processed: ${imageProcessCount}\n` +
-    `Average Process Time: ${averageProcessTime.toFixed(2)} ms\n` +
-    `Total Images Received: ${imageReceiveCount}\n` +
-    `Average Receive Time: ${averageReceiveTime.toFixed(2)} ms\n` +
-    `Total Users Not Selected: ${noUserSelectedCount}\n` +
-    `Total Images Failed to Process: ${imagesFailedProcessCount}\n`
+    Object.values(metrics)
+      .map(
+        (metric) =>
+          `- ${metric.name}: ${metric.value} ${metric.valueType ? metric.valueType : ""}`,
+      )
+      .join("\n") +
+    `\n\n⏱️ Average Upload Time: ${averageUploadTime.toFixed(2)} ms` +
+    `\n⏱️ Average Process Time: ${averageProcessTime.toFixed(2)} ms` +
+    `\n⏱️ Average Receive Time: ${averageReceiveTime.toFixed(2)} ms`
   );
 };
 
