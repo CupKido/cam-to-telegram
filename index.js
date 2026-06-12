@@ -23,9 +23,14 @@ const OWNER_TELEGRAM_ID = process.env.OWNER_TELEGRAM_ID;
 const CONCURRENT_UPLOAD_WORKERS = process.env.CONCURRENT_UPLOAD_WORKERS || 2;
 const CONCURRENT_PROCESSING_WORKERS =
   process.env.CONCURRENT_PROCESSING_WORKERS || 1;
-const MESSAGE_SENTENCE_COOLDOWN_MS = Number(
-  process.env.MESSAGE_SENTENCE_COOLDOWN_MS || 2 * 60 * 1000,
+const parsedMessageSentenceCooldownMs = Number(
+  process.env.MESSAGE_SENTENCE_COOLDOWN_MS,
 );
+const MESSAGE_SENTENCE_COOLDOWN_MS =
+  Number.isFinite(parsedMessageSentenceCooldownMs) &&
+  parsedMessageSentenceCooldownMs > 0
+    ? parsedMessageSentenceCooldownMs
+    : 2 * 60 * 1000;
 
 //STATE VARIABLES
 const userToMessageTimeMap = new Map();
