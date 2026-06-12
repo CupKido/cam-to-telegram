@@ -305,7 +305,7 @@ async function sendImageToUser(userKey, imagePath) {
     await bot.telegram.sendDocument(userId, {
       source: imagePath,
     });
-    messageUserIfShould(userId);
+    await messageUserIfShould(userId);
     recordImageUploadTime(startTime);
   } catch (error) {
     console.error("Failed to send image to user:", error);
@@ -327,7 +327,7 @@ async function sendImagesToUsers(usersKeys, imagePath) {
       await bot.telegram.sendDocument(userId, fileId, {
         caption: "Here is your picture!",
       });
-      messageUserIfShould(userId);
+      await messageUserIfShould(userId);
     });
   } catch (error) {
     console.error("Failed to send image to users:", error);
