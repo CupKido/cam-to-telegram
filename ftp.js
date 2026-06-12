@@ -92,9 +92,8 @@ const init = (onImageUploaded, onLogin) => {
     console.log(`🚀 FTP Server is running and waiting for your Sony!`);
     console.log(`📍 Server IP: ${localIp}`);
     console.log(`📍 LAN IP: ${LAN_IP}`);
-    console.log(`🔢 Port:      2121`);
-    console.log(`👤 Username:  sony`);
-    console.log(`🔑 Password:  alpha`);
+    console.log(`🔢 Port:      ${FTP_PORT}`);
+    console.log(`👤 Username:  ${process.env.FTP_USERNAME}`);
     console.log(`📂 Destination: ${UPLOAD_DIR}`);
     console.log(`📂 Edited destination: ${PROCESSED_DIR}`);
     console.log(`===================================================`);
