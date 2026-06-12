@@ -19,10 +19,15 @@ const FTP_TLS_CERT = process.env.FTP_TLS_CERT;
 // Build TLS options when both key and cert paths are provided
 let tlsOptions = null;
 if (FTP_TLS_KEY && FTP_TLS_CERT) {
-  tlsOptions = {
-    key: fs.readFileSync(FTP_TLS_KEY),
-    cert: fs.readFileSync(FTP_TLS_CERT),
-  };
+  try {
+    tlsOptions = {
+      key: fs.readFileSync(FTP_TLS_KEY),
+      cert: fs.readFileSync(FTP_TLS_CERT),
+    };
+  } catch (err) {
+    console.error(`[FTP] Failed to load TLS files: ${err.message}`);
+    process.exit(1);
+  }
 }
 //STATE VARIABLES
 let initialized = false;
