@@ -36,6 +36,12 @@ const replySentences = [
   "I literally said WOW out loud 😩💘✨",
   "Absolutely SERVINGGGGG 😍🔥❤️‍🔥",
   "Can we talk about how AMAZING you look?!?! 😭💕💕",
+  "This pic just raised the temperature in here by 100 degrees!!! 🌡️🔥😍",
+  "I cannot handle this level of iconic beauty right now!!! 👑💖⚡",
+  "Every single detail is perfection, no notes!!! ✅💘✨",
+  "This is elite-level gorgeousness, truly next dimension!!! 🚀💞😮‍💨",
+  "Main character energy turned all the way up!!! 🎬🔥💫",
+  "You snapped so hard with this one, unbelievable!!! 📸💥❤️",
 ];
 
 module.exports = () => {
