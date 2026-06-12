@@ -1,6 +1,12 @@
 const path = require("path");
 const gm = require("gm").subClass({ imageMagick: "7+" });
 const { recordImageProcessTime, onImageProcessFailed } = require("./metrics");
+const fs = require("fs");
+
+const PROCESSED_DIR = path.join(__dirname, "processed_photos");
+if (!fs.existsSync(PROCESSED_DIR)) {
+  fs.mkdirSync(PROCESSED_DIR);
+}
 
 async function applyAutoExposure(inputPath, filename) {
   // if directory doesn't exist, create it
