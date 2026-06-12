@@ -321,14 +321,16 @@ async function sendImagesToUsers(usersKeys, imagePath) {
     recordImageUploadTime(startTime);
     const fileId = message.document.file_id;
 
-    usersKeys.forEach(async (userKey) => {
-      const userId = getUserId(userKey);
-      logImage(imagePath, userKey, userId);
-      await bot.telegram.sendDocument(userId, fileId, {
-        caption: "Here is your picture!",
-      });
-      await messageUserIfShould(userId);
-    });
+    await Promise.all(
+      usersKeys.map(async (userKey) => {
+        const userId = getUserId(userKey);
+        logImage(imagePath, userKey, userId);
+        await bot.telegram.sendDocument(userId, fileId, {
+          caption: "Here is your picture!",
+        });
+        await messageUserIfShould(userId);
+      }),
+    );
   } catch (error) {
     console.error("Failed to send image to users:", error);
   }
