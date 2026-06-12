@@ -42,10 +42,13 @@ async function applyAutoExposure(inputPath, filename) {
 
     return outputPath;
   } catch (err) {
-    console.error("Failed to process auto exposure:", err);
+    console.error(
+      "Failed to process auto exposure, returning original image:",
+      err,
+    );
     onImageProcessFailed();
 
-    return null;
+    return inputPath;
   }
 }
 
