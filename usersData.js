@@ -1,6 +1,11 @@
 const fs = require("fs");
 
-const USERS_DATA_FILE = "signed_in_users.txt";
+const DATA_DIR = "data";
+const USERS_DATA_FILE = `${DATA_DIR}/signed_in_users.txt`;
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR);
+}
 
 const saveUserData = (username, id) => {
   if (signedInUsers.has(username)) {
