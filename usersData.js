@@ -33,6 +33,7 @@ const extractUsersData = () => {
   const lines = userData.split("\n");
 
   for (const line of lines) {
+    if (!line.trim()) continue;
     const [user, id] = line.split("|||");
     users.set(user, id);
   }
