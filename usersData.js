@@ -45,5 +45,6 @@ const signedInUsers = extractUsersData();
 module.exports = {
   saveUserData,
   getUsers: () => signedInUsers,
+  getRawUsersData: () => fs.readFileSync(USERS_DATA_FILE, "utf-8"),
   getUserId: (username) => signedInUsers.get(username),
 };

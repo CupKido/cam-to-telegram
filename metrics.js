@@ -5,6 +5,7 @@ let imageProcessCount = 0;
 let imageReceiveTimeSum = 0;
 let imageReceiveCount = 0;
 let noUserSelectedCount = 0;
+let imagesFailedProcessCount = 0;
 
 const recordImageReceiveTime = (startTime) => {
   const endTime = Date.now();
@@ -31,6 +32,10 @@ const onNoUserSelected = () => {
   noUserSelectedCount++;
 };
 
+const onImageProcessFailed = () => {
+  imagesFailedProcessCount++;
+};
+
 const resetMetrics = () => {
   imageUploadTimeSum = 0;
   imageUploadCount = 0;
@@ -39,6 +44,7 @@ const resetMetrics = () => {
   imageReceiveTimeSum = 0;
   imageReceiveCount = 0;
   noUserSelectedCount = 0;
+  imagesFailedProcessCount = 0;
 };
 
 const getMetricsReport = () => {
@@ -56,7 +62,8 @@ const getMetricsReport = () => {
     `Average Process Time: ${averageProcessTime.toFixed(2)} ms\n` +
     `Total Images Received: ${imageReceiveCount}\n` +
     `Average Receive Time: ${averageReceiveTime.toFixed(2)} ms\n` +
-    `Total Users Not Selected: ${noUserSelectedCount}\n`
+    `Total Users Not Selected: ${noUserSelectedCount}\n` +
+    `Total Images Failed to Process: ${imagesFailedProcessCount}\n`
   );
 };
 
@@ -65,6 +72,7 @@ module.exports = {
   recordImageProcessTime,
   recordImageReceiveTime,
   onNoUserSelected,
+  onImageProcessFailed,
   resetMetrics,
   getMetricsReport,
 };

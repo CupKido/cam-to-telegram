@@ -1,8 +1,8 @@
 const path = require("path");
 const gm = require("gm").subClass({ imageMagick: "7+" });
-const { recordImageProcessTime } = require("./metrics");
+const { recordImageProcessTime, onImageProcessFailed } = require("./metrics");
 
-async function applyAutoExposure(inputPath, filename, callback) {
+async function applyAutoExposure(inputPath, filename) {
   // if directory doesn't exist, create it
   const startTime = Date.now();
   const outputPath = path.join(
@@ -36,16 +36,16 @@ async function applyAutoExposure(inputPath, filename, callback) {
           console.log("Tonal values adjusted!");
           recordImageProcessTime(startTime);
 
-          resolve(); // This tells 'await' that the processing is officially finished
+          resolve();
         });
     });
-
-    // Now this callback will only execute AFTER the file is completely written
-    await callback(outputPath);
 
     return outputPath;
   } catch (err) {
     console.error("Failed to process auto exposure:", err);
+    onImageProcessFailed();
+
+    return null;
   }
 }
 

@@ -3,7 +3,12 @@ const dotenv = require("dotenv");
 dotenv.config();
 const StartFTPServer = require("./ftp");
 const randomReplySentence = require("./replySentences");
-const { saveUserData, getUsers, getUserId } = require("./usersData");
+const {
+  saveUserData,
+  getUsers,
+  getUserId,
+  getRawUsersData,
+} = require("./usersData");
 const { logImage, getLogFilesList, getLogFilePath } = require("./imageLogger");
 const { getUserKey, deleteFileAfterDelay } = require("./utils");
 const imagesProccesor = require("./imagesProccesor");
@@ -15,25 +20,29 @@ const {
 } = require("./metrics");
 //CONFIG
 const OWNER_TELEGRAM_ID = process.env.OWNER_TELEGRAM_ID;
-const CONCURRENT_WORKERS = process.env.CONCURRENT_WORKERS || 3;
+const CONCURRENT_UPLOAD_WORKERS = process.env.CONCURRENT_UPLOAD_WORKERS || 3;
+const CONCURRENT_PROCESSING_WORKERS =
+  process.env.CONCURRENT_PROCESSING_WORKERS || 1;
 
 //STATE VARIABLES
 const userToMessageTimeMap = new Map();
-const imagesQueue = [];
-const messagesNotSendQueue = [];
+const imagesUploadQueue = [];
+const imagesProcessingQueue = [];
+
+let messagesNotSendQueue = [];
 let selectedUser = null;
 let selectedUsers = new Set();
 
 //APP
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 
-async function imageWorker(workerId) {
+async function imageProcessWorker(workerId) {
   while (true) {
-    if (imagesQueue.length > 0) {
+    if (imagesProcessingQueue.length > 0) {
       console.log(
-        `Worker ${workerId} is processing an image. Queue length: ${imagesQueue.length}`,
+        `Worker ${workerId} is processing an image. Queue length: ${imagesProcessingQueue.length}`,
       );
-      await workOnImagesTask(imagesQueue.shift());
+      await workOnImageProcessTask(imagesProcessingQueue.shift());
     } else {
       // Queue is empty, wait 3 seconds before checking again to avoid burning CPU
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -41,33 +50,65 @@ async function imageWorker(workerId) {
   }
 }
 
+async function imageUploadWorker(workerId) {
+  while (true) {
+    if (imagesUploadQueue.length > 0) {
+      console.log(
+        `Worker ${workerId} is uploading an image. Queue length: ${imagesUploadQueue.length}`,
+      );
+      await workOnImageUploadTask(imagesUploadQueue.shift());
+    } else {
+      // Queue is empty, wait 5 seconds before checking again to avoid burning CPU
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+}
+
 const startWorkers = () => {
-  for (let i = 0; i < CONCURRENT_WORKERS; i++) {
-    imageWorker(i);
+  for (let i = 0; i < CONCURRENT_UPLOAD_WORKERS; i++) {
+    imageUploadWorker(`uploading_${i}`);
+  }
+  for (let i = 0; i < CONCURRENT_PROCESSING_WORKERS; i++) {
+    imageProcessWorker(`processing_${i}`);
   }
 };
 
-const workOnImagesTask = async (task) => {
-  const { userKey, usersKeys, imagePath, filename } = task;
+const workOnImageUploadTask = async (uploadTask) => {
+  const { userKey, usersKeys, imagePath } = uploadTask;
 
-  await imagesProccesor.applyAutoExposure(
+  try {
+    if (usersKeys) {
+      await sendImagesToUsers(usersKeys, imagePath);
+    } else {
+      await sendImageToUser(userKey, imagePath);
+    }
+  } catch (err) {
+    console.error(`Worker ${workerId} failed to send image:`, err);
+  } finally {
+    deleteFileAfterDelay(imagePath, 30000);
+  }
+};
+
+const workOnImageProcessTask = async (processTask) => {
+  const { userKey, usersKeys, imagePath, filename } = processTask;
+
+  const processedImagePath = await imagesProccesor.applyAutoExposure(
     imagePath,
     filename,
-    async (processedImagePath) => {
-      deleteFileAfterDelay(imagePath, 10000);
-      try {
-        if (usersKeys) {
-          await sendImagesToUsers(usersKeys, processedImagePath);
-        } else {
-          await sendImageToUser(userKey, processedImagePath);
-        }
-      } catch (err) {
-        console.error(`Worker ${workerId} failed to send image:`, err);
-      } finally {
-        deleteFileAfterDelay(processedImagePath, 30000);
-      }
-    },
   );
+
+  if (!processedImagePath) {
+    console.error(`Failed to process image: ${imagePath}. Skipping upload.`);
+    return;
+  }
+
+  deleteFileAfterDelay(imagePath, 10000);
+
+  imagesUploadQueue.push({
+    userKey,
+    usersKeys,
+    imagePath: processedImagePath,
+  });
 };
 
 const initializeBot = (botToInitialize) => {
@@ -183,6 +224,15 @@ const initializeBot = (botToInitialize) => {
     ctx.reply("Metrics have been reset.");
   });
 
+  botToInitialize.command("rawUsersData", (ctx) => {
+    if (ctx.from.id.toString() !== OWNER_TELEGRAM_ID) {
+      ctx.reply("You are not authorized to use this command.");
+      return;
+    }
+
+    ctx.reply(getRawUsersData());
+  });
+
   botToInitialize.action(/getLog:(.+)/, async (ctx) => {
     const logFilePath = getLogFilePath(ctx.match[1]);
     if (!logFilePath) {
@@ -206,7 +256,7 @@ const initializeBot = (botToInitialize) => {
       );
 
       messagesNotSendQueue.forEach(({ filePath, filename }) => {
-        imagesQueue.push({
+        imagesProcessingQueue.push({
           userKey: selectedUser,
           imagePath: filePath,
           filename,
@@ -290,13 +340,13 @@ async function handleImageReceived(filePath, filename) {
   }
 
   if (selectedUsers.size > 0) {
-    imagesQueue.push({
+    imagesProcessingQueue.push({
       usersKeys: Array.from(selectedUsers),
       imagePath: filePath,
       filename,
     });
   } else {
-    imagesQueue.push({
+    imagesProcessingQueue.push({
       userKey: selectedUser,
       imagePath: filePath,
       filename,
