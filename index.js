@@ -83,10 +83,8 @@ const workOnImageUploadTask = async (uploadTask) => {
       await sendImageToUser(userKey, imagePath);
     }
   } catch (err) {
-    console.error(`Worker ${workerId} failed to send image:`, err);
+    console.error("Failed to send image:", err);
   } finally {
-    deleteFileAfterDelay(imagePath, 30000);
-  }
 };
 
 const workOnImageProcessTask = async (processTask) => {
