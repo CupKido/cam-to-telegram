@@ -7,7 +7,12 @@ const { saveUserData, getUsers, getUserId } = require("./usersData");
 const { logImage, getLogFilesList, getLogFilePath } = require("./imageLogger");
 const { getUserKey, deleteFileAfterDelay } = require("./utils");
 const imagesProccesor = require("./imagesProccesor");
-
+const {
+  getMetricsReport,
+  recordImageUploadTime,
+  onNoUserSelected,
+  resetMetrics,
+} = require("./metrics");
 //CONFIG
 const OWNER_TELEGRAM_ID = process.env.OWNER_TELEGRAM_ID;
 const CONCURRENT_WORKERS = process.env.CONCURRENT_WORKERS || 3;
@@ -15,28 +20,20 @@ const CONCURRENT_WORKERS = process.env.CONCURRENT_WORKERS || 3;
 //STATE VARIABLES
 const userToMessageTimeMap = new Map();
 const imagesQueue = [];
+const messagesNotSendQueue = [];
 let selectedUser = null;
 let selectedUsers = new Set();
 
+//APP
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 
 async function imageWorker(workerId) {
   while (true) {
     if (imagesQueue.length > 0) {
-      const task = imagesQueue.shift();
-      const { userKey, usersKeys, imagePath } = task;
-
-      try {
-        if (usersKeys) {
-          await sendImagesToUsers(usersKeys, imagePath);
-        } else {
-          await sendImageToUser(userKey, imagePath);
-        }
-      } catch (err) {
-        console.error(`Worker ${workerId} failed to send image:`, err);
-      } finally {
-        deleteFileAfterDelay(imagePath, 30000);
-      }
+      console.log(
+        `Worker ${workerId} is processing an image. Queue length: ${imagesQueue.length}`,
+      );
+      await workOnImagesTask(imagesQueue.shift());
     } else {
       // Queue is empty, wait 3 seconds before checking again to avoid burning CPU
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -48,6 +45,29 @@ const startWorkers = () => {
   for (let i = 0; i < CONCURRENT_WORKERS; i++) {
     imageWorker(i);
   }
+};
+
+const workOnImagesTask = async (task) => {
+  const { userKey, usersKeys, imagePath, filename } = task;
+
+  await imagesProccesor.applyAutoExposure(
+    imagePath,
+    filename,
+    async (processedImagePath) => {
+      deleteFileAfterDelay(imagePath, 10000);
+      try {
+        if (usersKeys) {
+          await sendImagesToUsers(usersKeys, processedImagePath);
+        } else {
+          await sendImageToUser(userKey, processedImagePath);
+        }
+      } catch (err) {
+        console.error(`Worker ${workerId} failed to send image:`, err);
+      } finally {
+        deleteFileAfterDelay(processedImagePath, 30000);
+      }
+    },
+  );
 };
 
 const initializeBot = (botToInitialize) => {
@@ -108,7 +128,7 @@ const initializeBot = (botToInitialize) => {
 
     // List all signed-in users
     const userList = Array.from(getUsers().keys()).map((username) =>
-      Markup.button.callback(username, "addselect:" + username),
+      Markup.button.callback(username, "addtoselected:" + username),
     );
 
     const clearButton = Markup.button.callback(
@@ -142,6 +162,27 @@ const initializeBot = (botToInitialize) => {
     );
   });
 
+  botToInitialize.command("metrics", async (ctx) => {
+    if (ctx.from.id.toString() !== OWNER_TELEGRAM_ID) {
+      ctx.reply("You are not authorized to use this command.");
+
+      return;
+    }
+
+    const report = getMetricsReport();
+    await ctx.reply(report);
+  });
+
+  botToInitialize.command("resetMetrics", (ctx) => {
+    if (ctx.from.id.toString() !== OWNER_TELEGRAM_ID) {
+      ctx.reply("You are not authorized to use this command.");
+      return;
+    }
+
+    resetMetrics();
+    ctx.reply("Metrics have been reset.");
+  });
+
   botToInitialize.action(/getLog:(.+)/, async (ctx) => {
     const logFilePath = getLogFilePath(ctx.match[1]);
     if (!logFilePath) {
@@ -158,21 +199,34 @@ const initializeBot = (botToInitialize) => {
   botToInitialize.action(/select:(.+)/, (ctx) => {
     selectedUser = ctx.match[1];
     ctx.reply(`You have selected: ${selectedUser}`);
-    console.log(`Selected user for photo delivery: ${selectedUser}`);
+
+    if (messagesNotSendQueue.length > 0) {
+      ctx.reply(
+        `There are ${messagesNotSendQueue.length} messages waiting to be sent. They will be processed shortly.`,
+      );
+
+      messagesNotSendQueue.forEach(({ filePath, filename }) => {
+        imagesQueue.push({
+          userKey: selectedUser,
+          imagePath: filePath,
+          filename,
+        });
+      });
+      messagesNotSendQueue = [];
+    }
   });
 
-  botToInitialize.action(/addselect:(.+)/, (ctx) => {
-    selectedUsers.push(ctx.match[1]);
-    ctx.reply(`You have selected: ${ctx.match[1]}`);
-    console.log(
-      `Selected users for photo delivery: ${selectedUsers.join(", ")}`,
+  botToInitialize.action(/addtoselected:(.+)/, (ctx) => {
+    selectedUsers.add(ctx.match[1]);
+    ctx.reply(
+      `You have selected: ${ctx.match[1]}, total selected: ${selectedUsers.size}`,
     );
   });
 
   botToInitialize.action("clearUsersSelection", (ctx) => {
     selectedUsers = new Set();
+    selectedUser = null;
     ctx.reply("User selection cleared.");
-    console.log("Selected users cleared.");
   });
 
   process.once("SIGINT", () => botToInitialize.stop("SIGINT"));
@@ -188,10 +242,12 @@ async function sendImageToUser(userKey, imagePath) {
   const userId = getUserId(userKey);
   logImage(imagePath, userKey, userId);
   try {
+    const startTime = Date.now();
     await bot.telegram.sendDocument(userId, {
       source: imagePath,
     });
     messageUserIfShould(userId);
+    recordImageUploadTime(startTime);
   } catch (error) {
     console.error("Failed to send image to user:", error);
   }
@@ -199,9 +255,11 @@ async function sendImageToUser(userKey, imagePath) {
 
 async function sendImagesToUsers(usersKeys, imagePath) {
   try {
+    const startTime = Date.now();
     const message = await bot.telegram.sendDocument(OWNER_TELEGRAM_ID, {
       source: imagePath,
     });
+    recordImageUploadTime(startTime);
     const fileId = message.document.file_id;
 
     usersKeys.forEach(async (userKey) => {
@@ -218,32 +276,32 @@ async function sendImagesToUsers(usersKeys, imagePath) {
 }
 
 async function handleImageReceived(filePath, filename) {
-  await imagesProccesor.applyAutoExposure(
-    filePath,
-    filename,
-    async (processedImagePath) => {
-      if (!selectedUser && selectedUsers.size === 0) {
-        console.warn(
-          "No user selected. Please use /selectUser to choose a recipient.",
-        );
-        return;
-      }
+  if (!selectedUser && selectedUsers.size === 0) {
+    console.warn(
+      "No user selected. Please use /selectUser to choose a recipient.",
+    );
+    onNoUserSelected();
+    messagesNotSendQueue.push({
+      filePath,
+      filename,
+    });
 
-      if (selectedUsers.size > 0) {
-        imagesQueue.push({
-          usersKeys: Array.from(selectedUsers),
-          imagePath: processedImagePath,
-        });
-      } else {
-        imagesQueue.push({
-          userKey: selectedUser,
-          imagePath: processedImagePath,
-        });
-      }
+    return;
+  }
 
-      deleteFileAfterDelay(filePath, 10000);
-    },
-  );
+  if (selectedUsers.size > 0) {
+    imagesQueue.push({
+      usersKeys: Array.from(selectedUsers),
+      imagePath: filePath,
+      filename,
+    });
+  } else {
+    imagesQueue.push({
+      userKey: selectedUser,
+      imagePath: filePath,
+      filename,
+    });
+  }
 }
 
 const messageUserIfShould = async (userId) => {

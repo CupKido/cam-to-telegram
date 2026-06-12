@@ -1,9 +1,10 @@
 const path = require("path");
 const gm = require("gm").subClass({ imageMagick: "7+" });
+const { recordImageProcessTime } = require("./metrics");
 
 async function applyAutoExposure(inputPath, filename, callback) {
   // if directory doesn't exist, create it
-
+  const startTime = Date.now();
   const outputPath = path.join(
     __dirname,
     "processed_photos",
@@ -20,18 +21,27 @@ async function applyAutoExposure(inputPath, filename, callback) {
     //   .jpeg({ quality: 100 }) // Compress for fast dispatching to your bot
     //   .toFile(outputPath);
 
-    await gm(inputPath)
-      .autoOrient()
-      .modulate(110, 90)
-      .level("5%", "90%", 1.05)
-      .quality(100)
-      .write(outputPath, async function (err) {
-        if (err) console.log("Error applying auto exposure:", err);
-        else {
-          console.error("Tonal values adjusted!");
-          await callback(outputPath);
-        }
-      });
+    await new Promise((resolve, reject) => {
+      gm(inputPath)
+        .autoOrient()
+        .modulate(110, 90)
+        .level("5%", "90%", 1.05)
+        .quality(100)
+        .write(outputPath, function (err) {
+          if (err) {
+            console.error("Error applying auto exposure:", err);
+            return reject(err); // This rejects the promise and throws an error to the outer try/catch
+          }
+
+          console.log("Tonal values adjusted!");
+          recordImageProcessTime(startTime);
+
+          resolve(); // This tells 'await' that the processing is officially finished
+        });
+    });
+
+    // Now this callback will only execute AFTER the file is completely written
+    await callback(outputPath);
 
     return outputPath;
   } catch (err) {

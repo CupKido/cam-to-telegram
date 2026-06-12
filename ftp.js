@@ -3,10 +3,16 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const app = express();
-
+const { recordImageReceiveTime } = require("./metrics");
+//CONFIG
 let localIp = "0.0.0.0";
-const pasv_url = process.env.HOST_IP_ADDRESS || localIp;
+const PASV_URL = process.env.HOST_IP_ADDRESS || localIp;
+const FTP_PORT = process.env.FTP_PORT || "2121";
+const LAN_IP = require("ip").address();
+//STATE VARIABLES
+let initialized = false;
 
+// APP
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -14,13 +20,13 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send(
     "📸 Sony FTP Server is running! Please point your camera to ftp://" +
-      pasv_url +
+      PASV_URL +
       ":2121 with the configured credentials.",
   );
 });
 
 app.listen(8080, () => {
-  console.log(`📡 Web server running on http://${pasv_url}:3000`);
+  console.log(`📡 Web server running on http://${PASV_URL}:3000`);
 });
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
@@ -34,19 +40,17 @@ if (!fs.existsSync(PROCESSED_DIR)) {
 
 const imagesWritten = new Map();
 
-let initialized = false;
-
-const init = (onImageUploaded) => {
+const init = (onImageUploaded, onLogin) => {
   if (initialized) {
     console.warn("FTP Server is already initialized.");
     return;
   }
 
   const ftpServer = new FtpServer({
-    url: `ftp://0.0.0.0:${process.env.FTP_PORT || "2121"}`,
+    url: `ftp://0.0.0.0:${FTP_PORT}`,
 
     // 1. MUST be your computer's actual local network IP on your router!
-    pasv_url: pasv_url,
+    pasv_url: PASV_URL,
 
     // 2. Explicitly bound range for the dynamic data channels
     pasv_min: 10021,
@@ -87,6 +91,7 @@ const init = (onImageUploaded) => {
     console.log(`===================================================`);
     console.log(`🚀 FTP Server is running and waiting for your Sony!`);
     console.log(`📍 Server IP: ${localIp}`);
+    console.log(`📍 LAN IP: ${LAN_IP}`);
     console.log(`🔢 Port:      2121`);
     console.log(`👤 Username:  sony`);
     console.log(`🔑 Password:  alpha`);
@@ -98,11 +103,15 @@ const init = (onImageUploaded) => {
   // Optional: Basic file watcher to trigger a "bot push" simulation instantly
   fs.watch(UPLOAD_DIR, (eventType, filename) => {
     // console.log(`[FTP Watcher] Detected ${eventType} on ${filename}`);
+    let startTime = Date.now();
     if (eventType === "rename" && filename) {
       console.log(`[FTP Watcher] Detected new file: ${filename}`);
       imagesWritten.set(
         filename,
-        setTimeout(() => handleImageReceived(filename), 6000),
+        setTimeout(async () => {
+          recordImageReceiveTime(startTime);
+          await handleImageReceived(filename);
+        }, 6000),
       );
     }
 
@@ -110,7 +119,10 @@ const init = (onImageUploaded) => {
       clearTimeout(imagesWritten.get(filename));
       imagesWritten.set(
         filename,
-        setTimeout(async () => await handleImageReceived(filename), 4000),
+        setTimeout(async () => {
+          recordImageReceiveTime(startTime);
+          await handleImageReceived(filename);
+        }, 4000),
       );
     }
   });
