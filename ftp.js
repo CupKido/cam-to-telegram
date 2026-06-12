@@ -3,10 +3,20 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const app = express();
-
+const {
+  recordImageReceiveTime,
+  onFTPClientConnected,
+  onFTPClientDisconnected,
+} = require("./metrics");
+//CONFIG
 let localIp = "0.0.0.0";
-const pasv_url = process.env.HOST_IP_ADDRESS || localIp;
+const PASV_URL = process.env.HOST_IP_ADDRESS || localIp;
+const FTP_PORT = process.env.FTP_PORT || "2121";
+const LAN_IP = require("ip").address();
+//STATE VARIABLES
+let initialized = false;
 
+// APP
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -14,39 +24,33 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send(
     "📸 Sony FTP Server is running! Please point your camera to ftp://" +
-      pasv_url +
+      PASV_URL +
       ":2121 with the configured credentials.",
   );
 });
 
 app.listen(8080, () => {
-  console.log(`📡 Web server running on http://${pasv_url}:3000`);
+  console.log(`📡 Web server running on http://${PASV_URL}:8080`);
 });
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR);
 }
-const PROCESSED_DIR = path.join(__dirname, "processed_photos");
-if (!fs.existsSync(PROCESSED_DIR)) {
-  fs.mkdirSync(PROCESSED_DIR);
-}
 
 const imagesWritten = new Map();
 
-let initialized = false;
-
-const init = (onImageUploaded) => {
+const init = (onImageUploaded, onLogin) => {
   if (initialized) {
     console.warn("FTP Server is already initialized.");
     return;
   }
 
   const ftpServer = new FtpServer({
-    url: `ftp://0.0.0.0:${process.env.FTP_PORT || "2121"}`,
+    url: `ftp://0.0.0.0:${FTP_PORT}`,
 
     // 1. MUST be your computer's actual local network IP on your router!
-    pasv_url: pasv_url,
+    pasv_url: PASV_URL,
 
     // 2. Explicitly bound range for the dynamic data channels
     pasv_min: 10021,
@@ -67,8 +71,23 @@ const init = (onImageUploaded) => {
         console.log(
           `[FTP] Camera connected successfully from ${connection.remoteAddress}`,
         );
+        onFTPClientConnected();
 
-        // Direct the camera to place files into our upload directory
+        connection.on("STOR", async (error, filePath) => {
+          if (error) {
+            console.error(`[FTP] Error uploading file ${filePath}:`, error);
+            return;
+          }
+
+          const filename = path.basename(filePath);
+
+          if (imagesWritten.get(filename)) {
+            recordImageReceiveTime(imagesWritten.get(filename));
+          }
+
+          await handleImageReceived(filePath, filename);
+        });
+
         resolve({ root: UPLOAD_DIR });
       } else {
         console.log(`[FTP] Auth rejected for user: ${username}`);
@@ -87,45 +106,33 @@ const init = (onImageUploaded) => {
     console.log(`===================================================`);
     console.log(`🚀 FTP Server is running and waiting for your Sony!`);
     console.log(`📍 Server IP: ${localIp}`);
-    console.log(`🔢 Port:      2121`);
-    console.log(`👤 Username:  sony`);
-    console.log(`🔑 Password:  alpha`);
+    console.log(`📍 LAN IP: ${LAN_IP}`);
+    console.log(`🔢 Port:      ${FTP_PORT}`);
+    console.log(`👤 Username:  ${process.env.FTP_USERNAME}`);
     console.log(`📂 Destination: ${UPLOAD_DIR}`);
-    console.log(`📂 Edited destination: ${PROCESSED_DIR}`);
     console.log(`===================================================`);
   });
 
-  // Optional: Basic file watcher to trigger a "bot push" simulation instantly
-  fs.watch(UPLOAD_DIR, (eventType, filename) => {
-    // console.log(`[FTP Watcher] Detected ${eventType} on ${filename}`);
-    if (eventType === "rename" && filename) {
-      console.log(`[FTP Watcher] Detected new file: ${filename}`);
-      imagesWritten.set(
-        filename,
-        setTimeout(() => handleImageReceived(filename), 6000),
-      );
-    }
+  ftpServer.on("disconnect", ({ connection, id, newConnectionCount }) => {
+    console.log(`[FTP] disconnected: ${id}`);
+    onFTPClientDisconnected();
+  });
 
-    if (eventType === "change" && filename) {
-      clearTimeout(imagesWritten.get(filename));
-      imagesWritten.set(
-        filename,
-        setTimeout(async () => await handleImageReceived(filename), 4000),
-      );
+  fs.watch(UPLOAD_DIR, (eventType, filename) => {
+    if (eventType === "rename" && filename) {
+      imagesWritten.set(filename, Date.now());
+      setTimeout(() => {
+        if (imagesWritten.get(filename)) {
+          imagesWritten.delete(filename);
+        }
+      }, 120000);
     }
   });
 
-  const handleImageReceived = async (filename) => {
-    const filePath = path.join(UPLOAD_DIR, filename);
+  const handleImageReceived = async (filePath, filename) => {
+    imagesWritten.delete(filename);
 
-    if (fs.existsSync(filePath)) {
-      imagesWritten.delete(filename);
-      console.log(
-        `📸 [NEW IMAGE RECEIVED]: ${filename} (${(fs.statSync(filePath).size / 1024 / 1024).toFixed(2)} MB)`,
-      );
-
-      await onImageUploaded(filePath, filename);
-    }
+    await onImageUploaded(filePath, filename);
   };
 
   initialized = true;
