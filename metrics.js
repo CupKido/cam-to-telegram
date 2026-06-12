@@ -40,6 +40,11 @@ const metrics = {
     valueType: "count",
   },
   maxProcessTime: { value: 0, name: "Max Image Process Time", valueType: "ms" },
+  connectedFTPClientsCount: {
+    value: 0,
+    name: "Connected FTP Clients Count",
+    valueType: "count",
+  },
 };
 
 const recordImageReceiveTime = (startTime) => {
@@ -70,6 +75,14 @@ const onNoUserSelected = () => {
 
 const onImageProcessFailed = () => {
   metrics.imagesFailedProcessCount.value++;
+};
+
+const onFTPClientConnected = () => {
+  metrics.connectedFTPClientsCount.value++;
+};
+
+const setFTPClientConnectedCount = (connectedCount) => {
+  metrics.connectedFTPClientsCount.value = connectedCount;
 };
 
 const resetMetrics = () => {
@@ -116,4 +129,6 @@ module.exports = {
   onImageProcessFailed,
   resetMetrics,
   getMetricsReport,
+  onFTPClientConnected,
+  setFTPClientConnectedCount,
 };
