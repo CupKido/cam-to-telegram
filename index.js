@@ -281,10 +281,19 @@ const initializeBot = (botToInitialize) => {
 
   process.once("SIGINT", () => botToInitialize.stop("SIGINT"));
   process.once("SIGTERM", () => botToInitialize.stop("SIGTERM"));
+
+  botToInitialize.launch();
+
+  botToInitialize.telegram.sendMessage(
+    OWNER_TELEGRAM_ID,
+    `Bot has been started and is ready to receive images!\n` +
+      `Current upload workers: ${CONCURRENT_UPLOAD_WORKERS}\n` +
+      `Current processing workers: ${CONCURRENT_PROCESSING_WORKERS}\n` +
+      `Listed users count: ${getUsers().size}`,
+  );
 };
 
 initializeBot(bot);
-bot.launch();
 startWorkers();
 StartFTPServer(handleImageReceived);
 
