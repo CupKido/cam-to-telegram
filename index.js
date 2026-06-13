@@ -23,6 +23,16 @@ const OWNER_TELEGRAM_ID = process.env.OWNER_TELEGRAM_ID;
 const CONCURRENT_UPLOAD_WORKERS = process.env.CONCURRENT_UPLOAD_WORKERS || 2;
 const CONCURRENT_PROCESSING_WORKERS =
   process.env.CONCURRENT_PROCESSING_WORKERS || 1;
+const DEFAULT_MESSAGE_SENTENCE_COOLDOWN_MS = 3 * 60 * 1000;
+const rawMessageSentenceCooldownMs = Number.parseInt(
+  process.env.MESSAGE_SENTENCE_COOLDOWN_MS ?? "",
+  10,
+);
+const MESSAGE_SENTENCE_COOLDOWN_MS =
+  Number.isFinite(rawMessageSentenceCooldownMs) &&
+  rawMessageSentenceCooldownMs > 0
+    ? rawMessageSentenceCooldownMs
+    : DEFAULT_MESSAGE_SENTENCE_COOLDOWN_MS;
 
 //STATE VARIABLES
 const userToMessageTimeMap = new Map();
@@ -390,7 +400,7 @@ const messageUserIfShould = async (userId) => {
 const wasMessageSentToUserRecently = (userId) => {
   return (
     !userToMessageTimeMap.has(userId) ||
-    Date.now() - userToMessageTimeMap.get(userId) > 60 * 1000
+    Date.now() - userToMessageTimeMap.get(userId) > MESSAGE_SENTENCE_COOLDOWN_MS
   );
 };
 
