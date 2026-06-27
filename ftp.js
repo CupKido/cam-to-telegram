@@ -49,8 +49,8 @@ app.get("/", (req, res) => {
   );
 });
 
-https.createServer(tlsOptions, app).listen(443, () => {
-  console.log(`🔒 Secure server running at https://localhost:8080`);
+app.listen(8080, () => {
+  console.log(`📡 Web server running on http://${PASV_URL}:8080`);
 });
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
