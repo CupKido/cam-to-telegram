@@ -67,7 +67,7 @@ const init = (onImageUploaded, onLogin) => {
   }
 
   const ftpServer = new FtpServer({
-    url: `${"ftp"}://0.0.0.0:${FTP_PORT}`,
+    url: `ftp://0.0.0.0:${FTP_PORT}`,
 
     // 1. MUST be your computer's actual local network IP on your router!
     pasv_url: PASV_URL,
