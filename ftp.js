@@ -93,7 +93,11 @@ const broadcastDisplayUpdate = async (filePath, filename) => {
       imageUrl: "/display/latest-image",
     };
 
-    displayUpdatesServer.clients.forEach((client) => {
+    const openClients = Array.from(displayUpdatesServer.clients).filter(
+      (client) => client.readyState === WebSocket.OPEN,
+    );
+
+    openClients.forEach((client) => {
       sendDisplayPayload(client, latestDisplayPayload);
     });
   } catch (error) {
@@ -217,4 +221,3 @@ const init = (onImageUploaded, onLogin) => {
 };
 
 module.exports = init;
-module.exports.broadcastDisplayUpdate = broadcastDisplayUpdate;
