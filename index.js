@@ -42,6 +42,7 @@ const imagesProcessingQueue = [];
 let messagesNotSendQueue = [];
 let selectedUser = null;
 let selectedUsers = new Set();
+let selectedPreset = imagesProccesor.DEFAULT_PRESET_KEY;
 
 //APP
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
@@ -102,9 +103,10 @@ const workOnImageUploadTask = async (uploadTask) => {
 const workOnImageProcessTask = async (processTask) => {
   const { userKey, usersKeys, imagePath, filename } = processTask;
 
-  const processedImagePath = await imagesProccesor.applyAutoExposure(
+  const processedImagePath = await imagesProccesor.applyPreset(
     imagePath,
     filename,
+    selectedPreset,
   );
 
   if (!processedImagePath) {
@@ -210,6 +212,25 @@ const initializeBot = (botToInitialize) => {
     );
   });
 
+  botToInitialize.command("selectPreset", async (ctx) => {
+    if (ctx.from.id.toString() !== OWNER_TELEGRAM_ID) {
+      ctx.reply("You are not authorized to use this command.");
+      return;
+    }
+
+    const presetButtons = imagesProccesor.PRESET_OPTIONS.map((preset) => [
+      Markup.button.callback(
+        `${preset.label}${selectedPreset === preset.key ? " ✅" : ""}`,
+        "preset:" + preset.key,
+      ),
+    ]);
+
+    await ctx.reply(
+      `Please choose image preset. Current preset: ${selectedPreset}`,
+      Markup.inlineKeyboard(presetButtons).resize().oneTime(),
+    );
+  });
+
   botToInitialize.command("getLogs", async (ctx) => {
     if (ctx.from.id.toString() !== OWNER_TELEGRAM_ID) {
       ctx.reply("You are not authorized to use this command.");
@@ -304,6 +325,20 @@ const initializeBot = (botToInitialize) => {
     ctx.reply("User selection cleared.");
   });
 
+  botToInitialize.action(/preset:(.+)/, (ctx) => {
+    const presetKey = ctx.match[1];
+    if (!imagesProccesor.isPresetSupported(presetKey)) {
+      ctx.reply(`Unsupported preset: ${presetKey}`);
+      return;
+    }
+
+    selectedPreset = presetKey;
+    const selectedPresetInfo = imagesProccesor.PRESET_OPTIONS.find(
+      (preset) => preset.key === selectedPreset,
+    );
+    ctx.reply(`Image preset selected: ${selectedPresetInfo.label}`);
+  });
+
   process.once("SIGINT", () => botToInitialize.stop("SIGINT"));
   process.once("SIGTERM", () => botToInitialize.stop("SIGTERM"));
 
@@ -314,7 +349,8 @@ const initializeBot = (botToInitialize) => {
     `Bot has been started and is ready to receive images!\n` +
       `Current upload workers: ${CONCURRENT_UPLOAD_WORKERS}\n` +
       `Current processing workers: ${CONCURRENT_PROCESSING_WORKERS}\n` +
-      `Listed users count: ${getUsers().size}`,
+      `Listed users count: ${getUsers().size}\n` +
+      `Current image preset: ${selectedPreset}`,
   );
 };
 
@@ -408,6 +444,7 @@ const getOwnerMenuOptions = () => {
   return Markup.keyboard([
     [Markup.button.text("/selectUser")],
     [Markup.button.text("/selectUsers")],
+    [Markup.button.text("/selectPreset")],
     [Markup.button.text("/metrics")],
     [Markup.button.text("/resetMetrics")],
     [Markup.button.text("/getLogs")],
