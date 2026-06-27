@@ -1,8 +1,11 @@
 const FtpServer = require("ftp-srv");
+const http = require("http");
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
+const { WebSocketServer, WebSocket } = require("ws");
 const app = express();
+const server = http.createServer(app);
 const {
   recordImageReceiveTime,
   onFTPClientConnected,
@@ -15,6 +18,7 @@ const FTP_PORT = process.env.FTP_PORT || "2121";
 const LAN_IP = require("ip").address();
 //STATE VARIABLES
 let initialized = false;
+let latestDisplayPayload = null;
 
 // APP
 app.use(express.static(path.join(__dirname, "public")));
@@ -29,7 +33,22 @@ app.get("/", (req, res) => {
   );
 });
 
-app.listen(8080, () => {
+app.get("/display", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "display.html"));
+});
+
+const displayUpdatesServer = new WebSocketServer({
+  server,
+  path: "/display-updates",
+});
+
+displayUpdatesServer.on("connection", (socket) => {
+  if (latestDisplayPayload) {
+    socket.send(JSON.stringify(latestDisplayPayload));
+  }
+});
+
+server.listen(8080, () => {
   console.log(`📡 Web server running on http://${PASV_URL}:8080`);
 });
 
@@ -39,6 +58,37 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 const imagesWritten = new Map();
+
+const IMAGE_MIME_TYPES = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".bmp": "image/bmp",
+};
+
+const broadcastDisplayUpdate = async (filePath, filename) => {
+  try {
+    const fileBuffer = await fs.promises.readFile(filePath);
+    latestDisplayPayload = {
+      filename,
+      imageSrc: `data:${getImageMimeType(filename)};base64,${fileBuffer.toString("base64")}`,
+    };
+
+    displayUpdatesServer.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(latestDisplayPayload));
+      }
+    });
+  } catch (error) {
+    console.error(`[Display] Failed to broadcast image ${filename}:`, error);
+  }
+};
+
+const getImageMimeType = (filename) => {
+  return IMAGE_MIME_TYPES[path.extname(filename).toLowerCase()] || "image/jpeg";
+};
 
 const init = (onImageUploaded, onLogin) => {
   if (initialized) {
@@ -132,6 +182,7 @@ const init = (onImageUploaded, onLogin) => {
   const handleImageReceived = async (filePath, filename) => {
     imagesWritten.delete(filename);
 
+    await broadcastDisplayUpdate(filePath, filename);
     await onImageUploaded(filePath, filename);
   };
 
@@ -139,3 +190,4 @@ const init = (onImageUploaded, onLogin) => {
 };
 
 module.exports = init;
+module.exports.broadcastDisplayUpdate = broadcastDisplayUpdate;
