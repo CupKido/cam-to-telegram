@@ -23,6 +23,16 @@ const OWNER_TELEGRAM_ID = process.env.OWNER_TELEGRAM_ID;
 const CONCURRENT_UPLOAD_WORKERS = process.env.CONCURRENT_UPLOAD_WORKERS || 2;
 const CONCURRENT_PROCESSING_WORKERS =
   process.env.CONCURRENT_PROCESSING_WORKERS || 1;
+const DEFAULT_MESSAGE_SENTENCE_COOLDOWN_MS = 3 * 60 * 1000;
+const rawMessageSentenceCooldownMs = Number.parseInt(
+  process.env.MESSAGE_SENTENCE_COOLDOWN_MS ?? "",
+  10,
+);
+const MESSAGE_SENTENCE_COOLDOWN_MS =
+  Number.isFinite(rawMessageSentenceCooldownMs) &&
+  rawMessageSentenceCooldownMs > 0
+    ? rawMessageSentenceCooldownMs
+    : DEFAULT_MESSAGE_SENTENCE_COOLDOWN_MS;
 
 //STATE VARIABLES
 const userToMessageTimeMap = new Map();
@@ -119,6 +129,7 @@ const initializeBot = (botToInitialize) => {
       if (ctx.from.id.toString() === OWNER_TELEGRAM_ID) {
         ctx.reply(
           "Welcome back, owner! Use /selectUser to choose a recipient for the photos.",
+          getOwnerMenuOptions(),
         );
         return;
       }
@@ -142,6 +153,18 @@ const initializeBot = (botToInitialize) => {
     );
   });
 
+  botToInitialize.command("help", (ctx) => {
+    if (ctx.from.id.toString() !== OWNER_TELEGRAM_ID) {
+      ctx.reply(
+        "Nothing you can do! just chill and wait for your stunning photos to arrive 😍",
+      );
+
+      return;
+    }
+
+    ctx.reply("Here are the available commands:", getOwnerMenuOptions());
+  });
+
   botToInitialize.command("selectUser", async (ctx) => {
     if (ctx.from.id.toString() !== OWNER_TELEGRAM_ID) {
       ctx.reply("You are not authorized to use this command.");
@@ -149,9 +172,9 @@ const initializeBot = (botToInitialize) => {
     }
 
     // List all signed-in users
-    const userList = Array.from(getUsers().keys()).map((username) =>
+    const userList = Array.from(getUsers().keys()).map((username) => [
       Markup.button.callback(username, "select:" + username),
-    );
+    ]);
 
     await ctx.reply(
       "Please choose a user from the menu below:",
@@ -170,9 +193,9 @@ const initializeBot = (botToInitialize) => {
     selectedUsers = new Set();
 
     // List all signed-in users
-    const userList = Array.from(getUsers().keys()).map((username) =>
+    const userList = Array.from(getUsers().keys()).map((username) => [
       Markup.button.callback(username, "addtoselected:" + username),
-    );
+    ]);
 
     const clearButton = Markup.button.callback(
       "Clear Selection",
@@ -181,7 +204,7 @@ const initializeBot = (botToInitialize) => {
 
     await ctx.reply(
       "Please choose a user from the menu below:",
-      Markup.inlineKeyboard([...userList, clearButton])
+      Markup.inlineKeyboard([...userList, [clearButton]])
         .resize() // Fits the keyboard nicely on mobile screens
         .persistent(), // Keeps the keyboard open after a button is pressed
     );
@@ -377,6 +400,18 @@ const messageUserIfShould = async (userId) => {
 const wasMessageSentToUserRecently = (userId) => {
   return (
     !userToMessageTimeMap.has(userId) ||
-    Date.now() - userToMessageTimeMap.get(userId) > 60 * 1000
+    Date.now() - userToMessageTimeMap.get(userId) > MESSAGE_SENTENCE_COOLDOWN_MS
   );
+};
+
+const getOwnerMenuOptions = () => {
+  return Markup.keyboard([
+    [Markup.button.text("/selectUser")],
+    [Markup.button.text("/selectUsers")],
+    [Markup.button.text("/metrics")],
+    [Markup.button.text("/resetMetrics")],
+    [Markup.button.text("/getLogs")],
+    [Markup.button.text("/rawUsersData")],
+    [Markup.button.text("/help")],
+  ]).persistent();
 };
