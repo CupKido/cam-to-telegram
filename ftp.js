@@ -18,7 +18,10 @@ const FTP_PORT = process.env.FTP_PORT || "2121";
 const LAN_IP = require("ip").address();
 //STATE VARIABLES
 let initialized = false;
+let latestDisplayImage = null;
 let latestDisplayPayload = null;
+const DISPLAY_PAGE_PATH = path.join(__dirname, "public", "display.html");
+const DISPLAY_PAGE_HTML = fs.readFileSync(DISPLAY_PAGE_PATH, "utf8");
 
 // APP
 app.use(express.static(path.join(__dirname, "public")));
@@ -34,7 +37,17 @@ app.get("/", (req, res) => {
 });
 
 app.get("/display", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "display.html"));
+  res.type("html").send(DISPLAY_PAGE_HTML);
+});
+
+app.get("/display/latest-image", (req, res) => {
+  if (!latestDisplayImage) {
+    res.status(404).send("No image available yet.");
+    return;
+  }
+
+  res.set("Cache-Control", "no-store");
+  res.type(latestDisplayImage.mimeType).send(latestDisplayImage.buffer);
 });
 
 const displayUpdatesServer = new WebSocketServer({
@@ -44,7 +57,7 @@ const displayUpdatesServer = new WebSocketServer({
 
 displayUpdatesServer.on("connection", (socket) => {
   if (latestDisplayPayload) {
-    socket.send(JSON.stringify(latestDisplayPayload));
+    sendDisplayPayload(socket, latestDisplayPayload);
   }
 });
 
@@ -71,18 +84,32 @@ const IMAGE_MIME_TYPES = {
 const broadcastDisplayUpdate = async (filePath, filename) => {
   try {
     const fileBuffer = await fs.promises.readFile(filePath);
+    latestDisplayImage = {
+      buffer: fileBuffer,
+      mimeType: getImageMimeType(filename),
+    };
     latestDisplayPayload = {
       filename,
-      imageSrc: `data:${getImageMimeType(filename)};base64,${fileBuffer.toString("base64")}`,
+      imageUrl: `/display/latest-image?v=${Date.now()}`,
     };
 
     displayUpdatesServer.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(latestDisplayPayload));
-      }
+      sendDisplayPayload(client, latestDisplayPayload);
     });
   } catch (error) {
     console.error(`[Display] Failed to broadcast image ${filename}:`, error);
+  }
+};
+
+const sendDisplayPayload = (socket, payload) => {
+  if (socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  try {
+    socket.send(JSON.stringify(payload));
+  } catch (error) {
+    console.error("[Display] Failed to send websocket payload:", error);
   }
 };
 
