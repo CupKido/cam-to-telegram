@@ -91,6 +91,7 @@
       const photoElement = document.getElementById("photo");
       const photoNameElement = document.getElementById("photo-name");
       const connectionStatusElement = document.getElementById("connection-status");
+      let imageVersion = 0;
       const socketProtocol = window.location.protocol === "https:" ? "wss" : "ws";
       const socket = new WebSocket(
         `${socketProtocol}://${window.location.host}/display-updates`,
@@ -117,6 +118,8 @@
           ) {
             throw new Error("Invalid image URL");
           }
+          imageVersion += 1;
+          parsedImageUrl.searchParams.set("v", imageVersion);
           photoElement.src = parsedImageUrl.toString();
           photoNameElement.textContent = filename;
         } catch (error) {
