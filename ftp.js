@@ -2,6 +2,7 @@ const FtpServer = require("ftp-srv");
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
+const https = require("https");
 const app = express();
 const {
   recordImageReceiveTime,
@@ -24,6 +25,9 @@ if (FTP_TLS_KEY && FTP_TLS_CERT) {
       key: fs.readFileSync(FTP_TLS_KEY),
       cert: fs.readFileSync(FTP_TLS_CERT),
     };
+    console.log(
+      `[FTP] TLS is enabled with key: ${FTP_TLS_KEY} and cert: ${FTP_TLS_CERT}`,
+    );
   } catch (err) {
     console.error(`[FTP] Failed to load TLS files: ${err.message}`);
     process.exit(1);
@@ -45,8 +49,8 @@ app.get("/", (req, res) => {
   );
 });
 
-app.listen(8080, () => {
-  console.log(`📡 Web server running on http://${PASV_URL}:8080`);
+https.createServer(tlsOptions, app).listen(443, () => {
+  console.log(`🔒 Secure server running at https://localhost:8080`);
 });
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
@@ -63,7 +67,7 @@ const init = (onImageUploaded, onLogin) => {
   }
 
   const ftpServer = new FtpServer({
-    url: `${tlsOptions ? "ftps" : "ftp"}://0.0.0.0:${FTP_PORT}`,
+    url: `${"ftp"}://0.0.0.0:${FTP_PORT}`,
 
     // 1. MUST be your computer's actual local network IP on your router!
     pasv_url: PASV_URL,
