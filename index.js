@@ -326,6 +326,11 @@ const initializeBot = (botToInitialize) => {
   });
 
   botToInitialize.action(/preset:(.+)/, (ctx) => {
+    if (ctx.from.id.toString() !== OWNER_TELEGRAM_ID) {
+      ctx.reply("You are not authorized to use this command.");
+      return;
+    }
+
     const presetKey = ctx.match[1];
     if (!imagesProccesor.isPresetSupported(presetKey)) {
       ctx.reply(`Unsupported preset: ${presetKey}`);
