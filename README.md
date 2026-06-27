@@ -102,7 +102,7 @@ For production deployments, provide secrets through your platform's secret manag
 | `FTP_USERNAME` | Yes | FTP login username for the camera |
 | `FTP_PASSWORD` | Yes | FTP login password for the camera |
 | `FTP_PORT` | No | FTP server port (default: `2121`) |
-| `HOST_IP_ADDRESS` | No | Public/LAN IP for passive mode (default: auto-detected) |
+| `HOST_IP_ADDRESS` | No | Public/LAN IP for passive mode (default: `0.0.0.0`) |
 | `FTP_TLS_KEY` | No | Path to TLS private key file (PEM) — enables FTPS when set with `FTP_TLS_CERT` |
 | `FTP_TLS_CERT` | No | Path to TLS certificate file (PEM) — enables FTPS when set with `FTP_TLS_KEY` |
 
