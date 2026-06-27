@@ -99,12 +99,30 @@ For production deployments, provide secrets through your platform's secret manag
 | --- | --- | --- |
 | `TELEGRAM_TOKEN` | Yes | Telegram bot token from BotFather |
 | `OWNER_TELEGRAM_ID` | Yes | Telegram user ID allowed to use `/selectUser` |
+| `FTP_USERNAME` | Yes | FTP login username for the camera |
+| `FTP_PASSWORD` | Yes | FTP login password for the camera |
+| `FTP_PORT` | No | FTP server port (default: `2121`) |
+| `HOST_IP_ADDRESS` | No | Public/LAN IP for passive mode (default: `0.0.0.0`) |
+| `FTP_TLS_KEY` | No | Path to TLS private key file (PEM) — enables FTPS when set with `FTP_TLS_CERT` |
+| `FTP_TLS_CERT` | No | Path to TLS certificate file (PEM) — enables FTPS when set with `FTP_TLS_KEY` |
+
+When both `FTP_TLS_KEY` and `FTP_TLS_CERT` are provided, the FTP server starts in **FTPS** (implicit TLS) mode using the `ftps://` scheme. If either variable is absent, the server falls back to plain FTP.
+
+#### Generating a self-signed certificate (for testing)
+
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
+  -subj "/CN=cam-to-telegram"
+```
+
+Then set `FTP_TLS_KEY=./key.pem` and `FTP_TLS_CERT=./cert.pem` in your `.env` file.
 
 ### Network / ports
 
 | Service | Port | Notes |
 | --- | --- | --- |
-| FTP server | `2121` | Bound to detected local IPv4 address |
+| FTP server | `2121` | Plain FTP or FTPS (implicit TLS) depending on TLS configuration |
+| Web status | `8080` | HTTP status page |
 
 ## Telegram commands
 

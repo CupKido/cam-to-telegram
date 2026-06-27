@@ -2,6 +2,7 @@ const FtpServer = require("ftp-srv");
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
+const https = require("https");
 const app = express();
 const {
   recordImageReceiveTime,
@@ -13,6 +14,25 @@ let localIp = "0.0.0.0";
 const PASV_URL = process.env.HOST_IP_ADDRESS || localIp;
 const FTP_PORT = process.env.FTP_PORT || "2121";
 const LAN_IP = require("ip").address();
+const FTP_TLS_KEY = process.env.FTP_TLS_KEY;
+const FTP_TLS_CERT = process.env.FTP_TLS_CERT;
+
+// Build TLS options when both key and cert paths are provided
+let tlsOptions = null;
+if (FTP_TLS_KEY && FTP_TLS_CERT) {
+  try {
+    tlsOptions = {
+      key: fs.readFileSync(FTP_TLS_KEY),
+      cert: fs.readFileSync(FTP_TLS_CERT),
+    };
+    console.log(
+      `[FTP] TLS is enabled with key: ${FTP_TLS_KEY} and cert: ${FTP_TLS_CERT}`,
+    );
+  } catch (err) {
+    console.error(`[FTP] Failed to load TLS files: ${err.message}`);
+    process.exit(1);
+  }
+}
 //STATE VARIABLES
 let initialized = false;
 
@@ -29,8 +49,8 @@ app.get("/", (req, res) => {
   );
 });
 
-app.listen(8080, () => {
-  console.log(`📡 Web server running on http://${PASV_URL}:8080`);
+https.createServer(tlsOptions, app).listen(8080, () => {
+  console.log(`🔒 Secure server running at https://${PASV_URL}:8080`);
 });
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
@@ -57,6 +77,7 @@ const init = (onImageUploaded, onLogin) => {
     pasv_max: 10030,
     max_connections: 2,
     anonymous: false,
+    ...(tlsOptions && { tls: tlsOptions }),
   });
 
   // 3. Handle login authentication
@@ -110,6 +131,7 @@ const init = (onImageUploaded, onLogin) => {
     console.log(`🔢 Port:      ${FTP_PORT}`);
     console.log(`👤 Username:  ${process.env.FTP_USERNAME}`);
     console.log(`📂 Destination: ${UPLOAD_DIR}`);
+    console.log(`🔒 TLS:       ${tlsOptions ? "enabled (FTPS)" : "disabled"}`);
     console.log(`===================================================`);
   });
 
