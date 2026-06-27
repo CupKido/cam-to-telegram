@@ -29,9 +29,7 @@ if (FTP_TLS_KEY && FTP_TLS_CERT) {
       key: fs.readFileSync(FTP_TLS_KEY),
       cert: fs.readFileSync(FTP_TLS_CERT),
     };
-    console.log(
-      `[FTP] TLS is enabled with key: ${FTP_TLS_KEY} and cert: ${FTP_TLS_CERT}`,
-    );
+    console.log("[FTP] TLS is enabled.");
   } catch (err) {
     console.error(`[FTP] Failed to load TLS files: ${err.message}`);
     process.exit(1);
