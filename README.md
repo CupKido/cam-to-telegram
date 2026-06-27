@@ -129,6 +129,8 @@ Then set `FTP_TLS_KEY=./key.pem` and `FTP_TLS_CERT=./cert.pem` in your `.env` fi
 - `/start` — register/sign in user (or owner welcome flow)
 - `/myID` — returns Telegram user ID
 - `/selectUser` — owner-only command to select who receives photos
+- `/selectUsers` — owner-only command to select multiple recipients
+- `/selectPreset` — owner-only command to choose image editing preset (`Auto Exposure`, `Vivid`, `Black & White`, `Original (No Edit)`)
 
 ## Runtime folders
 
@@ -141,7 +143,7 @@ The app creates these directories automatically:
 
 1. Camera uploads image via FTP (`2121`)
 2. File watcher detects completed upload
-3. Image is processed with ImageMagick (`gm`)
+3. Image is processed with the currently selected ImageMagick (`gm`) preset
 4. Processed image is sent to selected Telegram user
 5. Original and processed files are deleted after a delay
 
