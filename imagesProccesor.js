@@ -20,6 +20,13 @@ const isPresetSupported = (presetKey) => {
   return PRESET_OPTIONS.some((option) => option.key === presetKey);
 };
 
+const getPresetLabel = (presetKey) => {
+  return (
+    PRESET_OPTIONS.find((option) => option.key === presetKey)?.label ||
+    PRESET_OPTIONS.find((option) => option.key === DEFAULT_PRESET_KEY)?.label
+  );
+};
+
 const buildOutputPath = (filename, presetKey) => {
   return path.join(__dirname, "processed_photos", `${presetKey}_${filename}`);
 };
@@ -44,9 +51,9 @@ async function applyPreset(inputPath, filename, presetKey = DEFAULT_PRESET_KEY) 
       if (activePreset === "autoExposure") {
         imagePipeline = imagePipeline.modulate(110, 90).level("5%", "90%", 1.05);
       } else if (activePreset === "vivid") {
-        imagePipeline = imagePipeline.modulate(120, 120).contrast(1);
+        imagePipeline = imagePipeline.modulate(120, 120).contrast(2);
       } else if (activePreset === "blackAndWhite") {
-        imagePipeline = imagePipeline.colorspace("GRAY").contrast(1);
+        imagePipeline = imagePipeline.colorspace("GRAY").contrast(2);
       }
 
       imagePipeline.quality(100).write(outputPath, function (err) {
@@ -75,5 +82,6 @@ module.exports = {
   DEFAULT_PRESET_KEY,
   PRESET_OPTIONS,
   isPresetSupported,
+  getPresetLabel,
   applyPreset,
 };

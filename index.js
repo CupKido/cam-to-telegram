@@ -226,7 +226,7 @@ const initializeBot = (botToInitialize) => {
     ]);
 
     await ctx.reply(
-      `Please choose image preset. Current preset: ${selectedPreset}`,
+      `Please choose image preset. Current preset: ${imagesProccesor.getPresetLabel(selectedPreset)}`,
       Markup.inlineKeyboard(presetButtons).resize().oneTime(),
     );
   });
@@ -333,14 +333,7 @@ const initializeBot = (botToInitialize) => {
     }
 
     selectedPreset = presetKey;
-    const selectedPresetInfo = imagesProccesor.PRESET_OPTIONS.find(
-      (preset) => preset.key === selectedPreset,
-    );
-    if (!selectedPresetInfo) {
-      ctx.reply(`Unsupported preset: ${presetKey}`);
-      return;
-    }
-    ctx.reply(`Image preset selected: ${selectedPresetInfo.label}`);
+    ctx.reply(`Image preset selected: ${imagesProccesor.getPresetLabel(selectedPreset)}`);
   });
 
   process.once("SIGINT", () => botToInitialize.stop("SIGINT"));
@@ -354,7 +347,7 @@ const initializeBot = (botToInitialize) => {
       `Current upload workers: ${CONCURRENT_UPLOAD_WORKERS}\n` +
       `Current processing workers: ${CONCURRENT_PROCESSING_WORKERS}\n` +
       `Listed users count: ${getUsers().size}\n` +
-      `Current image preset: ${selectedPreset}`,
+      `Current image preset: ${imagesProccesor.getPresetLabel(selectedPreset)}`,
   );
 };
 
