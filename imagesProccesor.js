@@ -28,12 +28,13 @@ async function applyPreset(inputPath, filename, presetKey = DEFAULT_PRESET_KEY) 
   const activePreset = isPresetSupported(presetKey)
     ? presetKey
     : DEFAULT_PRESET_KEY;
+  const startTime = Date.now();
 
   if (activePreset === "original") {
+    recordImageProcessTime(startTime);
     return inputPath;
   }
 
-  const startTime = Date.now();
   const outputPath = buildOutputPath(filename, activePreset);
 
   try {

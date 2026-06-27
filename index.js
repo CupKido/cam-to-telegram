@@ -336,6 +336,10 @@ const initializeBot = (botToInitialize) => {
     const selectedPresetInfo = imagesProccesor.PRESET_OPTIONS.find(
       (preset) => preset.key === selectedPreset,
     );
+    if (!selectedPresetInfo) {
+      ctx.reply(`Unsupported preset: ${presetKey}`);
+      return;
+    }
     ctx.reply(`Image preset selected: ${selectedPresetInfo.label}`);
   });
 
