@@ -21,8 +21,12 @@ const LAN_IP = require("ip").address();
 let initialized = false;
 let latestDisplayImage = null;
 let latestDisplayPayload = null;
+let nextDisplayImageId = 0;
+const displayImages = new Map();
+const displayImageIds = [];
 const DISPLAY_PAGE_PATH = path.join(__dirname, "public", "display.html");
 const DISPLAY_PAGE_HTML = fs.readFileSync(DISPLAY_PAGE_PATH, "utf8");
+const MAX_DISPLAY_IMAGES = 100;
 
 // APP
 app.use(express.static(path.join(__dirname, "public")));
@@ -49,6 +53,17 @@ app.get("/display/latest-image", (req, res) => {
 
   res.set("Cache-Control", "no-store");
   res.type(latestDisplayImage.mimeType).send(latestDisplayImage.buffer);
+});
+
+app.get("/display/image/:imageId", (req, res) => {
+  const image = displayImages.get(req.params.imageId);
+  if (!image) {
+    res.status(404).send("Image not found.");
+    return;
+  }
+
+  res.set("Cache-Control", "no-store");
+  res.type(image.mimeType).send(image.buffer);
 });
 
 const displayUpdatesServer = new WebSocketServer({
@@ -85,10 +100,13 @@ const DISPLAY_AUTO_ORIENT_EXTENSIONS = new Set([".jpg", ".jpeg", ".tif", ".tiff"
 
 const broadcastDisplayUpdate = async (filePath, filename) => {
   try {
-    latestDisplayImage = await getDisplayImage(filePath, filename);
+    const displayImage = await getDisplayImage(filePath, filename);
+    const imageId = String(++nextDisplayImageId);
+    storeDisplayImage(imageId, displayImage);
+    latestDisplayImage = displayImage;
     latestDisplayPayload = {
       filename,
-      imageUrl: "/display/latest-image",
+      imageUrl: `/display/image/${imageId}`,
     };
 
     const openClients = Array.from(displayUpdatesServer.clients).filter(
@@ -141,6 +159,16 @@ const getDisplayImage = async (filePath, filename) => {
       buffer: await fs.promises.readFile(filePath),
       mimeType,
     };
+  }
+};
+
+const storeDisplayImage = (imageId, image) => {
+  displayImages.set(imageId, image);
+  displayImageIds.push(imageId);
+
+  while (displayImageIds.length > MAX_DISPLAY_IMAGES) {
+    const oldestImageId = displayImageIds.shift();
+    displayImages.delete(oldestImageId);
   }
 };
 

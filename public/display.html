@@ -91,7 +91,10 @@
       const photoElement = document.getElementById("photo");
       const photoNameElement = document.getElementById("photo-name");
       const connectionStatusElement = document.getElementById("connection-status");
+      const DISPLAY_DURATION_MS = 5000;
       let imageVersion = 0;
+      const displayQueue = [];
+      let displayTimeoutId = null;
       const socketProtocol = window.location.protocol === "https:" ? "wss" : "ws";
       const socket = new WebSocket(
         `${socketProtocol}://${window.location.host}/display-updates`,
@@ -107,21 +110,45 @@
         setConnectionStatus("Connected", true);
       });
 
+      const showNextQueuedImage = () => {
+        if (displayQueue.length === 0) {
+          displayTimeoutId = null;
+          return;
+        }
+
+        const { filename, imageUrl } = displayQueue.shift();
+        const parsedImageUrl = new URL(imageUrl, window.location.origin);
+
+        imageVersion += 1;
+        parsedImageUrl.searchParams.set("v", imageVersion);
+        photoElement.src = parsedImageUrl.toString();
+        photoNameElement.textContent = filename;
+        displayTimeoutId = window.setTimeout(
+          showNextQueuedImage,
+          DISPLAY_DURATION_MS,
+        );
+      };
+
       socket.addEventListener("message", (event) => {
         try {
           const { filename, imageUrl } = JSON.parse(event.data);
           const parsedImageUrl = new URL(imageUrl, window.location.origin);
+          const isQueuedDisplayImagePath = /^\/display\/image\/\d+$/.test(
+            parsedImageUrl.pathname,
+          );
 
           if (
             parsedImageUrl.origin !== window.location.origin ||
-            parsedImageUrl.pathname !== "/display/latest-image"
+            (!isQueuedDisplayImagePath &&
+              parsedImageUrl.pathname !== "/display/latest-image")
           ) {
             throw new Error("Invalid image URL");
           }
-          imageVersion += 1;
-          parsedImageUrl.searchParams.set("v", imageVersion);
-          photoElement.src = parsedImageUrl.toString();
-          photoNameElement.textContent = filename;
+          displayQueue.push({ filename, imageUrl: parsedImageUrl.toString() });
+
+          if (displayTimeoutId === null) {
+            showNextQueuedImage();
+          }
         } catch (error) {
           setConnectionStatus("Invalid update received", false);
         }
