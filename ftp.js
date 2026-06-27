@@ -24,16 +24,28 @@ const FTP_TLS_CERT = process.env.FTP_TLS_CERT;
 // Build TLS options when both key and cert paths are provided
 let tlsOptions = null;
 if (FTP_TLS_KEY && FTP_TLS_CERT) {
+  let tlsKey;
+  let tlsCert;
+
   try {
-    tlsOptions = {
-      key: fs.readFileSync(FTP_TLS_KEY),
-      cert: fs.readFileSync(FTP_TLS_CERT),
-    };
-    console.log("[FTP] TLS is enabled.");
-  } catch (err) {
-    console.error(`[FTP] Failed to load TLS files: ${err.message}`);
+    tlsKey = fs.readFileSync(FTP_TLS_KEY);
+  } catch {
+    console.error("[FTP] Failed to load TLS private key file.");
     process.exit(1);
   }
+
+  try {
+    tlsCert = fs.readFileSync(FTP_TLS_CERT);
+  } catch {
+    console.error("[FTP] Failed to load TLS certificate file.");
+    process.exit(1);
+  }
+
+  tlsOptions = {
+    key: tlsKey,
+    cert: tlsCert,
+  };
+  console.log("[FTP] TLS is enabled.");
 }
 const server = tlsOptions
   ? https.createServer(tlsOptions, app)
