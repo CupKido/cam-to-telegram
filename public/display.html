@@ -134,9 +134,10 @@
         try {
           const { filename, imageUrl } = JSON.parse(event.data);
           const parsedImageUrl = new URL(imageUrl, window.location.origin);
-          const isQueuedDisplayImagePath = /^\/display\/image\/[a-f0-9-]+$/i.test(
-            parsedImageUrl.pathname,
-          );
+          const isQueuedDisplayImagePath =
+            /^\/display\/image\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(
+              parsedImageUrl.pathname,
+            );
 
           if (
             parsedImageUrl.origin !== window.location.origin ||

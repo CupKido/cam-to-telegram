@@ -23,7 +23,6 @@ let initialized = false;
 let latestDisplayImage = null;
 let latestDisplayPayload = null;
 const displayImages = new Map();
-const displayImageIds = [];
 const DISPLAY_PAGE_PATH = path.join(__dirname, "public", "display.html");
 const DISPLAY_PAGE_HTML = fs.readFileSync(DISPLAY_PAGE_PATH, "utf8");
 const MAX_DISPLAY_IMAGES = 100;
@@ -164,10 +163,9 @@ const getDisplayImage = async (filePath, filename) => {
 
 const storeDisplayImage = (imageId, image) => {
   displayImages.set(imageId, image);
-  displayImageIds.push(imageId);
 
-  while (displayImageIds.length > MAX_DISPLAY_IMAGES) {
-    const oldestImageId = displayImageIds.shift();
+  while (displayImages.size > MAX_DISPLAY_IMAGES) {
+    const oldestImageId = displayImages.keys().next().value;
     displayImages.delete(oldestImageId);
   }
 };
