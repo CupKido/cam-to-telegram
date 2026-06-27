@@ -3,3 +3,11 @@ npm-debug.log
 .git
 .gitignore
 .env
+.env.*
+
+*.key
+*.crt
+*.pem
+
+node_modules
+npm-debug.log
