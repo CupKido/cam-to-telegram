@@ -35,6 +35,11 @@ async function applyPreset(inputPath, filename, presetKey = DEFAULT_PRESET_KEY) 
   const activePreset = isPresetSupported(presetKey)
     ? presetKey
     : DEFAULT_PRESET_KEY;
+  if (activePreset !== presetKey) {
+    console.warn(
+      `Unsupported preset '${presetKey}', falling back to '${DEFAULT_PRESET_KEY}'.`,
+    );
+  }
   const startTime = Date.now();
 
   if (activePreset === "original") {
