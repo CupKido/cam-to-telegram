@@ -2,6 +2,7 @@ const FtpServer = require("ftp-srv");
 const http = require("http");
 const path = require("path");
 const fs = require("fs");
+const sharp = require("sharp");
 const express = require("express");
 const { WebSocketServer, WebSocket } = require("ws");
 const app = express();
@@ -80,14 +81,11 @@ const IMAGE_MIME_TYPES = {
   ".webp": "image/webp",
   ".bmp": "image/bmp",
 };
+const DISPLAY_AUTO_ORIENT_EXTENSIONS = new Set([".jpg", ".jpeg", ".tif", ".tiff"]);
 
 const broadcastDisplayUpdate = async (filePath, filename) => {
   try {
-    const fileBuffer = await fs.promises.readFile(filePath);
-    latestDisplayImage = {
-      buffer: fileBuffer,
-      mimeType: getImageMimeType(filename),
-    };
+    latestDisplayImage = await getDisplayImage(filePath, filename);
     latestDisplayPayload = {
       filename,
       imageUrl: "/display/latest-image",
@@ -119,6 +117,31 @@ const sendDisplayPayload = (socket, payload) => {
 
 const getImageMimeType = (filename) => {
   return IMAGE_MIME_TYPES[path.extname(filename).toLowerCase()] || "image/jpeg";
+};
+
+const getDisplayImage = async (filePath, filename) => {
+  const mimeType = getImageMimeType(filename);
+
+  if (!DISPLAY_AUTO_ORIENT_EXTENSIONS.has(path.extname(filename).toLowerCase())) {
+    return {
+      buffer: await fs.promises.readFile(filePath),
+      mimeType,
+    };
+  }
+
+  try {
+    return {
+      buffer: await sharp(filePath).rotate().toBuffer(),
+      mimeType,
+    };
+  } catch (error) {
+    console.error(`[Display] Failed to auto-orient image ${filename}:`, error);
+
+    return {
+      buffer: await fs.promises.readFile(filePath),
+      mimeType,
+    };
+  }
 };
 
 const init = (onImageUploaded, onLogin) => {
