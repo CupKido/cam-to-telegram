@@ -1,7 +1,11 @@
 const FtpServer = require("ftp-srv");
+const { randomUUID } = require("crypto");
+const http = require("http");
 const path = require("path");
 const fs = require("fs");
+const sharp = require("sharp");
 const express = require("express");
+const { WebSocketServer, WebSocket } = require("ws");
 const https = require("https");
 const app = express();
 const {
@@ -33,8 +37,17 @@ if (FTP_TLS_KEY && FTP_TLS_CERT) {
     process.exit(1);
   }
 }
+const server = tlsOptions
+  ? https.createServer(tlsOptions, app)
+  : http.createServer(app);
 //STATE VARIABLES
 let initialized = false;
+let latestDisplayImage = null;
+let latestDisplayPayload = null;
+const displayImages = new Map();
+const DISPLAY_PAGE_PATH = path.join(__dirname, "public", "display.html");
+const DISPLAY_PAGE_HTML = fs.readFileSync(DISPLAY_PAGE_PATH, "utf8");
+const MAX_DISPLAY_IMAGES = 100;
 
 // APP
 app.use(express.static(path.join(__dirname, "public")));
@@ -49,8 +62,46 @@ app.get("/", (req, res) => {
   );
 });
 
-https.createServer(tlsOptions, app).listen(8080, () => {
-  console.log(`🔒 Secure server running at https://${PASV_URL}:8080`);
+app.get("/display", (req, res) => {
+  res.type("html").send(DISPLAY_PAGE_HTML);
+});
+
+app.get("/display/latest-image", (req, res) => {
+  if (!latestDisplayImage) {
+    res.status(404).send("No image available yet.");
+    return;
+  }
+
+  res.set("Cache-Control", "no-store");
+  res.type(latestDisplayImage.mimeType).send(latestDisplayImage.buffer);
+});
+
+app.get("/display/image/:imageId", (req, res) => {
+  const image = displayImages.get(req.params.imageId);
+  if (!image) {
+    res.status(404).send("Image not found.");
+    return;
+  }
+
+  res.set("Cache-Control", "no-store");
+  res.type(image.mimeType).send(image.buffer);
+});
+
+const displayUpdatesServer = new WebSocketServer({
+  server,
+  path: "/display-updates",
+});
+
+displayUpdatesServer.on("connection", (socket) => {
+  if (latestDisplayPayload) {
+    sendDisplayPayload(socket, latestDisplayPayload);
+  }
+});
+
+server.listen(8080, () => {
+  const protocol = tlsOptions ? "https" : "http";
+  const label = tlsOptions ? "🔒 Secure" : "📡 Web";
+  console.log(`${label} server running at ${protocol}://${PASV_URL}:8080`);
 });
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
@@ -59,6 +110,89 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 const imagesWritten = new Map();
+
+const IMAGE_MIME_TYPES = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".bmp": "image/bmp",
+};
+const DISPLAY_AUTO_ORIENT_EXTENSIONS = new Set([".jpg", ".jpeg", ".tif", ".tiff"]);
+
+const broadcastDisplayUpdate = async (filePath, filename) => {
+  try {
+    const displayImage = await getDisplayImage(filePath, filename);
+    const imageId = randomUUID();
+    storeDisplayImage(imageId, displayImage);
+    latestDisplayImage = displayImage;
+    latestDisplayPayload = {
+      filename,
+      imageUrl: `/display/image/${imageId}`,
+    };
+
+    const openClients = Array.from(displayUpdatesServer.clients).filter(
+      (client) => client.readyState === WebSocket.OPEN,
+    );
+
+    openClients.forEach((client) => {
+      sendDisplayPayload(client, latestDisplayPayload);
+    });
+  } catch (error) {
+    console.error(`[Display] Failed to broadcast image ${filename}:`, error);
+  }
+};
+
+const sendDisplayPayload = (socket, payload) => {
+  if (socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  try {
+    socket.send(JSON.stringify(payload));
+  } catch (error) {
+    console.error("[Display] Failed to send websocket payload:", error);
+  }
+};
+
+const getImageMimeType = (filename) => {
+  return IMAGE_MIME_TYPES[path.extname(filename).toLowerCase()] || "image/jpeg";
+};
+
+const getDisplayImage = async (filePath, filename) => {
+  const mimeType = getImageMimeType(filename);
+
+  if (!DISPLAY_AUTO_ORIENT_EXTENSIONS.has(path.extname(filename).toLowerCase())) {
+    return {
+      buffer: await fs.promises.readFile(filePath),
+      mimeType,
+    };
+  }
+
+  try {
+    return {
+      buffer: await sharp(filePath).rotate().toBuffer(),
+      mimeType,
+    };
+  } catch (error) {
+    console.error(`[Display] Failed to auto-orient image ${filename}:`, error);
+
+    return {
+      buffer: await fs.promises.readFile(filePath),
+      mimeType,
+    };
+  }
+};
+
+const storeDisplayImage = (imageId, image) => {
+  displayImages.set(imageId, image);
+
+  if (displayImages.size > MAX_DISPLAY_IMAGES) {
+    const oldestImageId = displayImages.keys().next().value;
+    displayImages.delete(oldestImageId);
+  }
+};
 
 const init = (onImageUploaded, onLogin) => {
   if (initialized) {
@@ -154,6 +288,7 @@ const init = (onImageUploaded, onLogin) => {
   const handleImageReceived = async (filePath, filename) => {
     imagesWritten.delete(filename);
 
+    await broadcastDisplayUpdate(filePath, filename);
     await onImageUploaded(filePath, filename);
   };
 

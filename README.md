@@ -6,6 +6,7 @@ Receive photos from a camera over FTP, auto-process them with ImageMagick, and s
 
 - Starts a Telegram bot (via Telegraf)
 - Starts an FTP server on your local network for camera uploads
+- Serves a live display page at `/display` that updates with the latest uploaded photo
 - Watches uploaded files, processes images with ImageMagick (`gm`)
 - Sends processed photos to a selected Telegram user
 
@@ -122,7 +123,7 @@ Then set `FTP_TLS_KEY=./key.pem` and `FTP_TLS_CERT=./cert.pem` in your `.env` fi
 | Service | Port | Notes |
 | --- | --- | --- |
 | FTP server | `2121` | Plain FTP or FTPS (implicit TLS) depending on TLS configuration |
-| Web status | `8080` | HTTP status page |
+| Web status / display | `8080` | `/` serves the status page and `/display` shows the latest uploaded photo over websocket; uses HTTPS when TLS is configured |
 
 ## Telegram commands
 
