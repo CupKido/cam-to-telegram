@@ -113,7 +113,6 @@
             throw new Error("Invalid image URL");
           }
           photoElement.src = parsedImageUrl.toString();
-          photoElement.src = parsedImageUrl.toString();
           photoNameElement.textContent = filename;
         } catch (error) {
           setConnectionStatus("Invalid update received", false);
