@@ -144,3 +144,5 @@ vite.config.ts.timestamp-*
 *.txt
 *.JPG
 .vscode/
+*.crt
+*.key

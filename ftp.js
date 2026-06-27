@@ -1,12 +1,13 @@
 const FtpServer = require("ftp-srv");
+const { randomUUID } = require("crypto");
 const http = require("http");
 const path = require("path");
 const fs = require("fs");
 const sharp = require("sharp");
 const express = require("express");
 const { WebSocketServer, WebSocket } = require("ws");
+const https = require("https");
 const app = express();
-const server = http.createServer(app);
 const {
   recordImageReceiveTime,
   onFTPClientConnected,
@@ -17,13 +18,33 @@ let localIp = "0.0.0.0";
 const PASV_URL = process.env.HOST_IP_ADDRESS || localIp;
 const FTP_PORT = process.env.FTP_PORT || "2121";
 const LAN_IP = require("ip").address();
+const FTP_TLS_KEY = process.env.FTP_TLS_KEY;
+const FTP_TLS_CERT = process.env.FTP_TLS_CERT;
+
+// Build TLS options when both key and cert paths are provided
+let tlsOptions = null;
+if (FTP_TLS_KEY && FTP_TLS_CERT) {
+  try {
+    tlsOptions = {
+      key: fs.readFileSync(FTP_TLS_KEY),
+      cert: fs.readFileSync(FTP_TLS_CERT),
+    };
+    console.log(
+      `[FTP] TLS is enabled with key: ${FTP_TLS_KEY} and cert: ${FTP_TLS_CERT}`,
+    );
+  } catch (err) {
+    console.error(`[FTP] Failed to load TLS files: ${err.message}`);
+    process.exit(1);
+  }
+}
+const server = tlsOptions
+  ? https.createServer(tlsOptions, app)
+  : http.createServer(app);
 //STATE VARIABLES
 let initialized = false;
 let latestDisplayImage = null;
 let latestDisplayPayload = null;
-let nextDisplayImageId = 0;
 const displayImages = new Map();
-const displayImageIds = [];
 const DISPLAY_PAGE_PATH = path.join(__dirname, "public", "display.html");
 const DISPLAY_PAGE_HTML = fs.readFileSync(DISPLAY_PAGE_PATH, "utf8");
 const MAX_DISPLAY_IMAGES = 100;
@@ -78,7 +99,9 @@ displayUpdatesServer.on("connection", (socket) => {
 });
 
 server.listen(8080, () => {
-  console.log(`📡 Web server running on http://${PASV_URL}:8080`);
+  const protocol = tlsOptions ? "https" : "http";
+  const label = tlsOptions ? "🔒 Secure" : "📡 Web";
+  console.log(`${label} server running at ${protocol}://${PASV_URL}:8080`);
 });
 
 const UPLOAD_DIR = path.join(__dirname, "uploaded_photos");
@@ -101,7 +124,7 @@ const DISPLAY_AUTO_ORIENT_EXTENSIONS = new Set([".jpg", ".jpeg", ".tif", ".tiff"
 const broadcastDisplayUpdate = async (filePath, filename) => {
   try {
     const displayImage = await getDisplayImage(filePath, filename);
-    const imageId = String(++nextDisplayImageId);
+    const imageId = randomUUID();
     storeDisplayImage(imageId, displayImage);
     latestDisplayImage = displayImage;
     latestDisplayPayload = {
@@ -164,10 +187,9 @@ const getDisplayImage = async (filePath, filename) => {
 
 const storeDisplayImage = (imageId, image) => {
   displayImages.set(imageId, image);
-  displayImageIds.push(imageId);
 
-  while (displayImageIds.length > MAX_DISPLAY_IMAGES) {
-    const oldestImageId = displayImageIds.shift();
+  if (displayImages.size > MAX_DISPLAY_IMAGES) {
+    const oldestImageId = displayImages.keys().next().value;
     displayImages.delete(oldestImageId);
   }
 };
@@ -189,6 +211,7 @@ const init = (onImageUploaded, onLogin) => {
     pasv_max: 10030,
     max_connections: 2,
     anonymous: false,
+    ...(tlsOptions && { tls: tlsOptions }),
   });
 
   // 3. Handle login authentication
@@ -242,6 +265,7 @@ const init = (onImageUploaded, onLogin) => {
     console.log(`🔢 Port:      ${FTP_PORT}`);
     console.log(`👤 Username:  ${process.env.FTP_USERNAME}`);
     console.log(`📂 Destination: ${UPLOAD_DIR}`);
+    console.log(`🔒 TLS:       ${tlsOptions ? "enabled (FTPS)" : "disabled"}`);
     console.log(`===================================================`);
   });
 
