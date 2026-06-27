@@ -11,7 +11,7 @@ const {
 } = require("./usersData");
 const { logImage, getLogFilesList, getLogFilePath } = require("./imageLogger");
 const { getUserKey, deleteFileAfterDelay } = require("./utils");
-const imagesProccesor = require("./imagesProccesor");
+const imagesProcessor = require("./imagesProccesor");
 const {
   getMetricsReport,
   recordImageUploadTime,
@@ -42,7 +42,7 @@ const imagesProcessingQueue = [];
 let messagesNotSendQueue = [];
 let selectedUser = null;
 let selectedUsers = new Set();
-let selectedPreset = imagesProccesor.DEFAULT_PRESET_KEY;
+let selectedPreset = imagesProcessor.DEFAULT_PRESET_KEY;
 
 //APP
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
@@ -103,7 +103,7 @@ const workOnImageUploadTask = async (uploadTask) => {
 const workOnImageProcessTask = async (processTask) => {
   const { userKey, usersKeys, imagePath, filename } = processTask;
 
-  const processedImagePath = await imagesProccesor.applyPreset(
+  const processedImagePath = await imagesProcessor.applyPreset(
     imagePath,
     filename,
     selectedPreset,
@@ -218,7 +218,7 @@ const initializeBot = (botToInitialize) => {
       return;
     }
 
-    const presetButtons = imagesProccesor.PRESET_OPTIONS.map((preset) => [
+    const presetButtons = imagesProcessor.PRESET_OPTIONS.map((preset) => [
       Markup.button.callback(
         `${preset.label}${selectedPreset === preset.key ? " ✅" : ""}`,
         "preset:" + preset.key,
@@ -226,7 +226,7 @@ const initializeBot = (botToInitialize) => {
     ]);
 
     await ctx.reply(
-      `Please choose image preset. Current preset: ${imagesProccesor.getPresetLabel(selectedPreset)}`,
+      `Please choose image preset. Current preset: ${imagesProcessor.getPresetLabel(selectedPreset)}`,
       Markup.inlineKeyboard(presetButtons).resize().oneTime(),
     );
   });
@@ -332,13 +332,13 @@ const initializeBot = (botToInitialize) => {
     }
 
     const presetKey = ctx.match[1];
-    if (!imagesProccesor.isPresetSupported(presetKey)) {
+    if (!imagesProcessor.isPresetSupported(presetKey)) {
       ctx.reply(`Unsupported preset: ${presetKey}`);
       return;
     }
 
     selectedPreset = presetKey;
-    ctx.reply(`Image preset selected: ${imagesProccesor.getPresetLabel(selectedPreset)}`);
+    ctx.reply(`Image preset selected: ${imagesProcessor.getPresetLabel(selectedPreset)}`);
   });
 
   process.once("SIGINT", () => botToInitialize.stop("SIGINT"));
@@ -352,7 +352,7 @@ const initializeBot = (botToInitialize) => {
       `Current upload workers: ${CONCURRENT_UPLOAD_WORKERS}\n` +
       `Current processing workers: ${CONCURRENT_PROCESSING_WORKERS}\n` +
       `Listed users count: ${getUsers().size}\n` +
-      `Current image preset: ${imagesProccesor.getPresetLabel(selectedPreset)}`,
+      `Current image preset: ${imagesProcessor.getPresetLabel(selectedPreset)}`,
   );
 };
 

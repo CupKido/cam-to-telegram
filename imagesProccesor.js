@@ -28,7 +28,7 @@ const getPresetLabel = (presetKey) => {
 };
 
 const buildOutputPath = (filename, presetKey) => {
-  return path.join(__dirname, "processed_photos", `${presetKey}_${filename}`);
+  return path.join(PROCESSED_DIR, `${presetKey}_${filename}`);
 };
 
 async function applyPreset(inputPath, filename, presetKey = DEFAULT_PRESET_KEY) {
