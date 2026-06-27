@@ -164,7 +164,7 @@ const getDisplayImage = async (filePath, filename) => {
 const storeDisplayImage = (imageId, image) => {
   displayImages.set(imageId, image);
 
-  while (displayImages.size > MAX_DISPLAY_IMAGES) {
+  if (displayImages.size > MAX_DISPLAY_IMAGES) {
     const oldestImageId = displayImages.keys().next().value;
     displayImages.delete(oldestImageId);
   }

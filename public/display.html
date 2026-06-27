@@ -151,7 +151,7 @@
             displayQueue.shift();
           }
 
-          displayQueue.push({ filename, imageUrl: parsedImageUrl.toString() });
+          displayQueue.push({ filename, imageUrl });
 
           if (displayTimeoutId === null) {
             showNextQueuedImage();
