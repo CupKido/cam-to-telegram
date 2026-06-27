@@ -1,4 +1,5 @@
 const FtpServer = require("ftp-srv");
+const { randomUUID } = require("crypto");
 const http = require("http");
 const path = require("path");
 const fs = require("fs");
@@ -21,7 +22,6 @@ const LAN_IP = require("ip").address();
 let initialized = false;
 let latestDisplayImage = null;
 let latestDisplayPayload = null;
-let nextDisplayImageId = 0;
 const displayImages = new Map();
 const displayImageIds = [];
 const DISPLAY_PAGE_PATH = path.join(__dirname, "public", "display.html");
@@ -101,7 +101,7 @@ const DISPLAY_AUTO_ORIENT_EXTENSIONS = new Set([".jpg", ".jpeg", ".tif", ".tiff"
 const broadcastDisplayUpdate = async (filePath, filename) => {
   try {
     const displayImage = await getDisplayImage(filePath, filename);
-    const imageId = String(++nextDisplayImageId);
+    const imageId = randomUUID();
     storeDisplayImage(imageId, displayImage);
     latestDisplayImage = displayImage;
     latestDisplayPayload = {
