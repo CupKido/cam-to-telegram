@@ -90,7 +90,7 @@ const broadcastDisplayUpdate = async (filePath, filename) => {
     };
     latestDisplayPayload = {
       filename,
-      imageUrl: `/display/latest-image?v=${Date.now()}`,
+      imageUrl: "/display/latest-image",
     };
 
     displayUpdatesServer.clients.forEach((client) => {
