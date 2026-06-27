@@ -78,8 +78,13 @@
   <body>
     <img id="photo" alt="Latest uploaded photo" />
     <div class="overlay">
-      <div id="connection-status" class="status-dot" aria-label="Connecting"></div>
-      <p id="photo-name" class="photo-name"></p>
+      <div
+        id="connection-status"
+        class="status-dot"
+        aria-label="Connecting"
+        aria-live="polite"
+      ></div>
+      <p id="photo-name" class="photo-name" aria-live="polite"></p>
     </div>
 
     <script>
